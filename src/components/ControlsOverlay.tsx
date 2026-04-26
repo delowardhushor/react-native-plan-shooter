@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import React, { useRef } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, PanResponder } from 'react-native';
 import { COLOR_FG } from '../engine/Constants';
 
 interface ControlsOverlayProps {
@@ -8,29 +8,37 @@ interface ControlsOverlayProps {
 }
 
 export const ControlsOverlay: React.FC<ControlsOverlayProps> = ({ onDirectionChange, onMissileFire }) => {
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderMove: (evt, gestureState) => {
+        const threshold = 15;
+        let dx = 0;
+        let dy = 0;
+        
+        if (gestureState.dx > threshold) dx = 1;
+        else if (gestureState.dx < -threshold) dx = -1;
+        
+        if (gestureState.dy > threshold) dy = 1;
+        else if (gestureState.dy < -threshold) dy = -1;
+        
+        onDirectionChange(dx, dy);
+      },
+      onPanResponderRelease: () => {
+        onDirectionChange(0, 0);
+      },
+      onPanResponderTerminate: () => {
+        onDirectionChange(0, 0);
+      }
+    })
+  ).current;
+
   return (
     <View style={styles.container} pointerEvents="box-none">
       
-      {/* Invisible grid maps standard tap bounds natively without complex PanResponder swipes! */}
-      <View style={styles.leftHalf}>
-        <View style={styles.dpadGrid}>
-          <View style={styles.gridRow}>
-             <View style={styles.gridCell}/>
-             <TouchableOpacity style={styles.gridCellTouch} onPressIn={() => onDirectionChange(0, -1)} onPressOut={() => onDirectionChange(0, 0)} activeOpacity={1} />
-             <View style={styles.gridCell}/>
-          </View>
-          <View style={styles.gridRow}>
-             <TouchableOpacity style={styles.gridCellTouch} onPressIn={() => onDirectionChange(-1, 0)} onPressOut={() => onDirectionChange(0, 0)} activeOpacity={1} />
-             <View style={styles.gridCell}/>
-             <TouchableOpacity style={styles.gridCellTouch} onPressIn={() => onDirectionChange(1, 0)} onPressOut={() => onDirectionChange(0, 0)} activeOpacity={1} />
-          </View>
-          <View style={styles.gridRow}>
-             <View style={styles.gridCell}/>
-             <TouchableOpacity style={styles.gridCellTouch} onPressIn={() => onDirectionChange(0, 1)} onPressOut={() => onDirectionChange(0, 0)} activeOpacity={1} />
-             <View style={styles.gridCell}/>
-          </View>
-        </View>
-      </View>
+      {/* PanResponder maps swiping gestures across the entire left half of the screen */}
+      <View style={styles.leftHalf} {...panResponder.panHandlers} />
       
       <View style={styles.rightHalf} pointerEvents="box-none">
         <TouchableOpacity onPress={onMissileFire} style={styles.missileBtn} activeOpacity={0.6}>
@@ -52,26 +60,6 @@ const styles = StyleSheet.create({
   leftHalf: {
     flex: 1, 
     backgroundColor: 'transparent',
-    padding: 20,
-    paddingTop: 80, 
-    justifyContent: 'center'
-  },
-  dpadGrid: {
-    width: '100%',
-    height: '100%',
-    maxWidth: 250,
-    maxHeight: 250,
-  },
-  gridRow: {
-    flex: 1,
-    flexDirection: 'row',
-  },
-  gridCell: {
-    flex: 1,
-  },
-  gridCellTouch: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.01)', 
   },
   rightHalf: {
     flex: 1, 
