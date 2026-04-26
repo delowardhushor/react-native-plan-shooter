@@ -8,20 +8,42 @@ interface ControlsOverlayProps {
 }
 
 export const ControlsOverlay: React.FC<ControlsOverlayProps> = ({ onDirectionChange, onMissileFire }) => {
+  const centerRef = useRef({ x: 0, y: 0 });
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt, gestureState) => {
+        centerRef.current = { x: gestureState.x0, y: gestureState.y0 };
+      },
       onPanResponderMove: (evt, gestureState) => {
-        const threshold = 15;
-        let dx = 0;
-        let dy = 0;
+        const currentX = gestureState.moveX;
+        const currentY = gestureState.moveY;
         
-        if (gestureState.dx > threshold) dx = 1;
-        else if (gestureState.dx < -threshold) dx = -1;
+        let diffX = currentX - centerRef.current.x;
+        let diffY = currentY - centerRef.current.y;
         
-        if (gestureState.dy > threshold) dy = 1;
-        else if (gestureState.dy < -threshold) dy = -1;
+        const maxDist = 45; 
+        const dist = Math.sqrt(diffX * diffX + diffY * diffY);
+        
+        // Floating joystick: if dragging beyond the max radius, pull the center point along
+        if (dist > maxDist) {
+          const ratio = maxDist / dist;
+          centerRef.current.x = currentX - diffX * ratio;
+          centerRef.current.y = currentY - diffY * ratio;
+          
+          diffX = currentX - centerRef.current.x;
+          diffY = currentY - centerRef.current.y;
+        }
+        
+        // Generate smooth analog signals between -1.0 and 1.0 (true 360-degree control)
+        let dx = diffX / maxDist;
+        let dy = diffY / maxDist;
+        
+        // Small deadzone to make it easy to fully stop without lifting your finger
+        if (Math.abs(dx) < 0.15) dx = 0;
+        if (Math.abs(dy) < 0.15) dy = 0;
         
         onDirectionChange(dx, dy);
       },
