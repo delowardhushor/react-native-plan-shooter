@@ -175,9 +175,10 @@ export const updateGameState = (
       }
     });
 
-    if (target && minDist > 0) {
-      const dx = (target.x + target.width/2) - (m.x + m.width/2);
-      const dy = (target.y + target.height/2) - (m.y + m.height/2);
+    const targetEnemy = target as Enemy | null;
+    if (targetEnemy && minDist > 0) {
+      const dx = (targetEnemy.x + targetEnemy.width/2) - (m.x + m.width/2);
+      const dy = (targetEnemy.y + targetEnemy.height/2) - (m.y + m.height/2);
       m.vx = (dx / minDist) * MISSILE_SPEED;
       m.vy = (dy / minDist) * MISSILE_SPEED;
     } else {
@@ -211,8 +212,8 @@ export const updateGameState = (
     const roamersCount = gameState.enemies.filter(e => e.type === EnemyType.ROAMER).length;
     let isRoamer = gameState.level >= 2 && Math.random() < 0.3; 
     
-    // Constraint: Under 10 Roamers only
-    if (isRoamer && roamersCount >= 10) {
+    // Constraint: Under 6 Roamers only
+    if (isRoamer && roamersCount >= 6) {
       isRoamer = false;
     }
 

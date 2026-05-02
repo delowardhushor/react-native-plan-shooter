@@ -10,7 +10,7 @@ import { initSounds, playSound } from '../engine/SoundManager';
 
 export const GameCanvas = () => {
   const gameState = useRef<GameState>(createInitialState());
-  const requestRef = useRef<number>();
+  const requestRef = useRef<number>(0);
   const isPaused = useRef<boolean>(false);
   
   const [score, setScore] = useState(0);
@@ -98,7 +98,11 @@ export const GameCanvas = () => {
 
           {/* Heavy Missiles */}
           {missiles.map((m, i) => (
-            <Rect key={`ms-${i}`} x={m.x} y={m.y} width={m.width} height={m.height} />
+            <Group key={`ms-${i}`}>
+              <Rect x={m.x} y={m.y + 2} width={12} height={4} />
+              <Rect x={m.x + 12} y={m.y + 3} width={4} height={2} />
+              <Rect x={m.x} y={m.y} width={4} height={8} />
+            </Group>
           ))}
 
           {/* Enemy Bullets */}
@@ -111,17 +115,20 @@ export const GameCanvas = () => {
              if (e.type === EnemyType.ROAMER) {
                return (
                  <Group key={`er-${i}`}>
-                   <Rect x={e.x} y={e.y} width={e.width} height={e.height} />
-                   <Rect x={e.x} y={e.y - 8} width={8} height={e.height + 16} />
-                   <Rect x={e.x - 8} y={e.y + 8} width={8} height={16} />
+                   <Rect x={e.x + 6} y={e.y + 10} width={26} height={12} />
+                   <Rect x={e.x} y={e.y + 14} width={6} height={4} />
+                   <Rect x={e.x + 14} y={e.y} width={10} height={32} />
+                   <Rect x={e.x + 28} y={e.y + 6} width={8} height={20} />
                  </Group>
                );
              }
 
              return (
                <Group key={`es-${i}`}>
-                 <Rect x={e.x} y={e.y} width={e.width} height={e.height} />
-                 <Rect x={e.x - 8} y={e.y + 4} width={8} height={16} />
+                 <Rect x={e.x + 4} y={e.y + 8} width={20} height={8} />
+                 <Rect x={e.x} y={e.y + 10} width={4} height={4} />
+                 <Rect x={e.x + 12} y={e.y + 2} width={8} height={20} />
+                 <Rect x={e.x + 24} y={e.y + 4} width={8} height={16} />
                </Group>
              );
           })}
@@ -207,7 +214,7 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
   },
   gameOverLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 30,
