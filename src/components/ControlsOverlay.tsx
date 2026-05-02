@@ -9,6 +9,7 @@ interface ControlsOverlayProps {
 
 export const ControlsOverlay: React.FC<ControlsOverlayProps> = ({ onDirectionChange, onMissileFire }) => {
   const centerRef = useRef({ x: 0, y: 0 });
+  const stopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -45,12 +46,24 @@ export const ControlsOverlay: React.FC<ControlsOverlayProps> = ({ onDirectionCha
         if (Math.abs(dx) < 0.15) dx = 0;
         if (Math.abs(dy) < 0.15) dy = 0;
         
+        // Cancel the previous stop instruction if finger is still moving
+        if (stopTimer.current) clearTimeout(stopTimer.current);
+        
         onDirectionChange(dx, dy);
+        
+        // If the finger stops moving for 100ms, automatically stop the plane 
+        // and reset the joystick center point to exactly under the finger.
+        stopTimer.current = setTimeout(() => {
+          centerRef.current = { x: currentX, y: currentY };
+          onDirectionChange(0, 0);
+        }, 100);
       },
       onPanResponderRelease: () => {
+        if (stopTimer.current) clearTimeout(stopTimer.current);
         onDirectionChange(0, 0);
       },
       onPanResponderTerminate: () => {
+        if (stopTimer.current) clearTimeout(stopTimer.current);
         onDirectionChange(0, 0);
       }
     })

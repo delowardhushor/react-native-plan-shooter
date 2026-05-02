@@ -14,7 +14,7 @@ export const COLOR_BG = '#8DBF80'; // Classic Nokia greenish background
 export const COLOR_FG = '#1B311E'; // Dark grey/greenish for pixels
 
 // Entities sizes and speeds
-export const PLANE_SIZE = { width: 32, height: 24 }; 
+export const PLANE_SIZE = { width: 32, height: 24 };
 export const BULLET_SIZE = { width: 8, height: 4 };
 export const ENEMY_BULLET_SIZE = { width: 6, height: 6 };
 
@@ -29,7 +29,7 @@ export const BASE_SPEED = 2; // base speed of enemies
 export const ROAMER_SPEED_X = 1; // moves left slower
 export const ROAMER_SPEED_Y = 2; // bobs up and down faster
 
-export const PLAYER_SPEED = 5; // Top speed for standard D-Pad bounds
+export const PLAYER_SPEED = 4; // Top speed for standard D-Pad bounds
 
 export const BULLET_SPEED = 10;
 export const ENEMY_BULLET_SPEED = 6;
