@@ -17,28 +17,22 @@ export const PLANE_SIZE = { width: 56, height: 26 };
 export const BULLET_SIZE = { width: 14, height: 4 };
 export const ENEMY_BULLET_SIZE = { width: 8, height: 8 };
 
-export const MISSILE_SIZE = { width: 28, height: 8 };
-export const MISSILE_SPEED = 15;
-export const MISSILE_COOLDOWN = 120; // Frames (2 seconds)
-
 export const ENEMY_SIZE = { width: 44, height: 22 };
 export const ROAMER_SIZE = { width: 64, height: 34 };
+export const BOSS_SIZE = { width: 150, height: 78 };
 
-export const BASE_SPEED = 2; // base speed of enemies
-export const ROAMER_SPEED_X = 1; // moves left slower
-export const ROAMER_SPEED_Y = 2; // bobs up and down faster
+export const ROAMER_SPEED_X = 0.8; // moves left slowly
+export const ROAMER_SPEED_Y = 1.1; // gentle bobbing
 
 export const PLAYER_SPEED = 4; // Top speed for standard D-Pad bounds
-
 export const BULLET_SPEED = 10;
-export const ENEMY_BULLET_SPEED = 6;
-
-export const SPAWN_RATE = 60; // frames between spawns (assuming 60fps, so 1 enemy per sec)
-export const FIRE_RATE = 15; // frames between firing bullets
-export const ROAMER_FIRE_RATE = 80;
 
 export const ENEMY_STANDARD_HP = 1;
 export const ENEMY_ROAMER_HP = 5;
+
+export const PLAYER_LIVES = 3;
+export const RESPAWN_FRAMES = 60;
+export const INVULNERABLE_FRAMES = 150;
 
 // Particle definitions
 export const PARTICLE_LIFETIME = 30; // Frames before disappearance
