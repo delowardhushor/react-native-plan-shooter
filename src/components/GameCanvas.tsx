@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, Text, TouchableWithoutFeedback, TouchableOpacity } from 'react-native';
-import { Canvas, Rect, Group } from '@shopify/react-native-skia';
-import { 
-  SCREEN_WIDTH, SCREEN_HEIGHT, COLOR_BG, COLOR_FG, GROUND_HEIGHT, PLAYER_SPEED
+import { Canvas, Picture } from '@shopify/react-native-skia';
+import {
+  PLAYER_SPEED, COLOR_TEXT, COLOR_PANEL, COLOR_PANEL_BORDER, COLOR_ACCENT
 } from '../engine/Constants';
-import { createInitialState, updateGameState, GameState, EnemyType } from '../engine/GameLoop';
+import { createInitialState, updateGameState, GameState } from '../engine/GameLoop';
+import { renderFrame } from '../render/Renderer';
 import { ControlsOverlay } from './ControlsOverlay';
 import { initSounds, playSound } from '../engine/SoundManager';
 
@@ -68,110 +69,59 @@ export const GameCanvas = () => {
     setGameOver(false);
   };
 
-  const { plane, bullets, enemyBullets, missiles, enemies, particles, level } = gameState.current;
+  const frame = renderFrame(gameState.current);
+  const { level } = gameState.current;
 
   return (
     <View style={styles.container}>
       <Canvas style={styles.canvas}>
-        <Rect x={0} y={0} width={SCREEN_WIDTH} height={SCREEN_HEIGHT} color={COLOR_BG} />
-        
-        <Group color={COLOR_FG}>
-          {/* Ground */}
-          <Rect x={0} y={SCREEN_HEIGHT - GROUND_HEIGHT} width={SCREEN_WIDTH} height={GROUND_HEIGHT} />
-          
-          {/* Player Plane Redesign (Classic pixel-art structure) */}
-          <Group>
-            {/* Main fuselage */}
-            <Rect x={plane.x + 8} y={plane.y + 8} width={20} height={8} />
-            {/* Front nose */}
-            <Rect x={plane.x + 28} y={plane.y + 10} width={4} height={4} />
-            {/* Wings top and bottom */}
-            <Rect x={plane.x + 12} y={plane.y + 2} width={8} height={20} />
-            {/* Rear rudder/tail */}
-            <Rect x={plane.x} y={plane.y + 4} width={8} height={16} />
-          </Group>
-
-          {/* Player Bullets */}
-          {bullets.map((b, i) => (
-            <Rect key={`pb-${i}`} x={b.x} y={b.y} width={b.width} height={b.height} />
-          ))}
-
-          {/* Heavy Missiles */}
-          {missiles.map((m, i) => (
-            <Group key={`ms-${i}`}>
-              <Rect x={m.x} y={m.y + 2} width={12} height={4} />
-              <Rect x={m.x + 12} y={m.y + 3} width={4} height={2} />
-              <Rect x={m.x} y={m.y} width={4} height={8} />
-            </Group>
-          ))}
-
-          {/* Enemy Bullets */}
-          {enemyBullets.map((b, i) => (
-            <Rect key={`eb-${i}`} x={b.x} y={b.y} width={b.width} height={b.height} />
-          ))}
-
-          {/* Enemies */}
-          {enemies.map((e, i) => {
-             if (e.type === EnemyType.ROAMER) {
-               return (
-                 <Group key={`er-${i}`}>
-                   <Rect x={e.x + 6} y={e.y + 10} width={26} height={12} />
-                   <Rect x={e.x} y={e.y + 14} width={6} height={4} />
-                   <Rect x={e.x + 14} y={e.y} width={10} height={32} />
-                   <Rect x={e.x + 28} y={e.y + 6} width={8} height={20} />
-                 </Group>
-               );
-             }
-
-             return (
-               <Group key={`es-${i}`}>
-                 <Rect x={e.x + 4} y={e.y + 8} width={20} height={8} />
-                 <Rect x={e.x} y={e.y + 10} width={4} height={4} />
-                 <Rect x={e.x + 12} y={e.y + 2} width={8} height={20} />
-                 <Rect x={e.x + 24} y={e.y + 4} width={8} height={16} />
-               </Group>
-             );
-          })}
-
-          {/* Explosion Particles */}
-          {particles.map((p, i) => (
-             <Rect key={`pt-${i}`} x={p.x} y={p.y} width={p.size} height={p.size} />
-          ))}
-        </Group>
+        <Picture picture={frame} />
       </Canvas>
 
-      {/* Top UI row updated with Pause capability nested accurately beside Level */}
       <View style={styles.topRow}>
-        <Text style={styles.uiText}>SCORE: {score}</Text>
+        <View style={styles.panel}>
+          <Text style={styles.label}>SCORE</Text>
+          <Text style={styles.value}>{score}</Text>
+        </View>
         <View style={styles.rightCluster}>
-          <TouchableOpacity onPress={togglePause} style={styles.pauseBtn}>
-            <Text style={styles.uiText}>{isPaused.current ? "RESUME" : "PAUSE"}</Text>
+          <View style={styles.panel}>
+            <Text style={styles.label}>LEVEL</Text>
+            <Text style={styles.value}>{level}</Text>
+          </View>
+          <TouchableOpacity onPress={togglePause} style={[styles.panel, styles.pauseBtn]} activeOpacity={0.7}>
+            {isPaused.current ? (
+              <View style={styles.playIcon} />
+            ) : (
+              <View style={styles.pauseIcon}>
+                <View style={styles.pauseBar} />
+                <View style={styles.pauseBar} />
+              </View>
+            )}
           </TouchableOpacity>
-          <Text style={styles.uiText}>LEVEL {level}</Text>
         </View>
       </View>
-      
+
       {!gameOver && <ControlsOverlay onDirectionChange={handleDirectionChange} onMissileFire={handleMissileFire} />}
-      
+
       {gameOver && (
-        <View style={styles.gameOverLayer}>
+        <View style={[styles.overlayLayer, styles.dim]}>
           <TouchableWithoutFeedback onPress={resetGame}>
-            <View style={styles.gameOverBox}>
-              <Text style={styles.gameOverText}>GAME OVER</Text>
-              <Text style={styles.restartText}>TAP TO RESTART</Text>
+            <View style={styles.card}>
+              <Text style={styles.title}>GAME OVER</Text>
+              <Text style={styles.finalScore}>SCORE {score}  ·  LEVEL {level}</Text>
+              <Text style={styles.hint}>TAP TO FLY AGAIN</Text>
             </View>
           </TouchableWithoutFeedback>
         </View>
       )}
 
       {isPaused.current && !gameOver && (
-        <View style={styles.gameOverLayer}>
-          <View style={[styles.gameOverBox, { backgroundColor: 'rgba(27, 49, 30, 0.4)' }]}>
-            <Text style={styles.gameOverText}>PAUSED</Text>
+        <View style={[styles.overlayLayer, styles.dim]}>
+          <View style={styles.card}>
+            <Text style={styles.title}>PAUSED</Text>
           </View>
         </View>
       )}
-
     </View>
   );
 };
@@ -186,56 +136,110 @@ const styles = StyleSheet.create({
   },
   topRow: {
     position: 'absolute',
-    top: 20,
+    top: 14,
     left: 20,
     right: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
     pointerEvents: 'box-none',
     zIndex: 20,
   },
   rightCluster: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 30,
+    gap: 10,
+  },
+  panel: {
+    minWidth: 78,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    backgroundColor: COLOR_PANEL,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLOR_PANEL_BORDER,
+  },
+  label: {
+    color: COLOR_ACCENT,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 2,
+  },
+  value: {
+    color: COLOR_TEXT,
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   pauseBtn: {
-    paddingHorizontal: 15,
-    paddingVertical: 5,
-    backgroundColor: 'rgba(27, 49, 30, 0.5)',
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: COLOR_FG,
+    minWidth: 0,
+    width: 52,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
-  uiText: {
-    color: COLOR_FG,
-    fontSize: 24,
-    fontWeight: 'bold',
-    fontFamily: 'monospace',
+  pauseIcon: {
+    flexDirection: 'row',
+    gap: 5,
   },
-  gameOverLayer: {
+  pauseBar: {
+    width: 6,
+    height: 20,
+    borderRadius: 2,
+    backgroundColor: COLOR_TEXT,
+  },
+  playIcon: {
+    width: 0,
+    height: 0,
+    marginLeft: 4,
+    borderTopWidth: 11,
+    borderBottomWidth: 11,
+    borderLeftWidth: 18,
+    borderTopColor: 'transparent',
+    borderBottomColor: 'transparent',
+    borderLeftColor: COLOR_TEXT,
+  },
+  overlayLayer: {
     ...StyleSheet.absoluteFill,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 30,
-    pointerEvents: 'box-none',
   },
-  gameOverBox: {
+  dim: {
+    backgroundColor: 'rgba(4, 12, 24, 0.55)',
+  },
+  card: {
     alignItems: 'center',
-    padding: 30,
-    backgroundColor: 'rgba(141, 191, 128, 0.8)',
-    borderRadius: 8,
+    paddingVertical: 24,
+    paddingHorizontal: 44,
+    backgroundColor: 'rgba(8, 20, 34, 0.78)',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLOR_PANEL_BORDER,
   },
-  gameOverText: {
-    color: COLOR_FG,
-    fontSize: 40,
-    fontWeight: 'bold',
-    fontFamily: 'monospace',
+  title: {
+    color: COLOR_TEXT,
+    fontSize: 38,
+    fontWeight: '900',
+    letterSpacing: 4,
   },
-  restartText: {
-    color: COLOR_FG,
-    fontSize: 20,
-    marginTop: 10,
-    fontFamily: 'monospace',
-  }
+  finalScore: {
+    color: COLOR_ACCENT,
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 2,
+    marginTop: 8,
+  },
+  hint: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 3,
+    marginTop: 16,
+  },
 });

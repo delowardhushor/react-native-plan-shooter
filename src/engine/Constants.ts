@@ -2,28 +2,27 @@ import { Dimensions } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
-// Nokia-style resolution feel. We scale everything up visually or define them in large pixel units.
-export const PIXEL_SIZE = 4; // Simulated pixel size
-
 // Bulletproof layout swap for forced landscape
 export const SCREEN_WIDTH = Math.max(width, height);
 export const SCREEN_HEIGHT = Math.min(width, height);
 
-// Nokia 1110 color palette
-export const COLOR_BG = '#8DBF80'; // Classic Nokia greenish background
-export const COLOR_FG = '#1B311E'; // Dark grey/greenish for pixels
+// HUD palette
+export const COLOR_TEXT = '#ffffff';
+export const COLOR_PANEL = 'rgba(8, 20, 34, 0.55)';
+export const COLOR_PANEL_BORDER = 'rgba(255, 255, 255, 0.28)';
+export const COLOR_ACCENT = '#ffb23e';
 
-// Entities sizes and speeds
-export const PLANE_SIZE = { width: 32, height: 24 };
-export const BULLET_SIZE = { width: 8, height: 4 };
-export const ENEMY_BULLET_SIZE = { width: 6, height: 6 };
+// Entities sizes and speeds (hit boxes; sprites are drawn to fit these)
+export const PLANE_SIZE = { width: 56, height: 26 };
+export const BULLET_SIZE = { width: 14, height: 4 };
+export const ENEMY_BULLET_SIZE = { width: 8, height: 8 };
 
-export const MISSILE_SIZE = { width: 16, height: 8 };
+export const MISSILE_SIZE = { width: 28, height: 8 };
 export const MISSILE_SPEED = 15;
 export const MISSILE_COOLDOWN = 120; // Frames (2 seconds)
 
-export const ENEMY_SIZE = { width: 24, height: 24 };
-export const ROAMER_SIZE = { width: 32, height: 32 };
+export const ENEMY_SIZE = { width: 44, height: 22 };
+export const ROAMER_SIZE = { width: 64, height: 34 };
 
 export const BASE_SPEED = 2; // base speed of enemies
 export const ROAMER_SPEED_X = 1; // moves left slower
@@ -44,5 +43,9 @@ export const ENEMY_ROAMER_HP = 5;
 // Particle definitions
 export const PARTICLE_LIFETIME = 30; // Frames before disappearance
 export const PARTICLE_SPEED = 6;     // Max speed multiplier for explosions
+export const MAX_PARTICLES = 320;
 
-export const GROUND_HEIGHT = 40;
+export const GROUND_HEIGHT = 56;
+
+// Tilt (degrees) applied to a plane at full vertical speed
+export const PLANE_MAX_TILT = 14;

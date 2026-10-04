@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, PanResponder } from 'react-native';
-import { COLOR_FG } from '../engine/Constants';
+import { COLOR_TEXT, COLOR_PANEL_BORDER } from '../engine/Constants';
 
 interface ControlsOverlayProps {
   onDirectionChange: (dx: number, dy: number) => void;
@@ -104,19 +104,23 @@ const styles = StyleSheet.create({
     pointerEvents: 'box-none',
   },
   missileBtn: {
-    width: 100,
-    height: 60,
-    backgroundColor: 'rgba(90, 20, 20, 0.4)', 
+    width: 84,
+    height: 84,
+    backgroundColor: 'rgba(200, 40, 30, 0.72)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 42,
     borderWidth: 2,
-    borderColor: '#3a1111',
+    borderColor: COLOR_PANEL_BORDER,
+    shadowColor: '#ff3b2a',
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    elevation: 6,
   },
   btnText: {
-    color: COLOR_FG,
-    fontSize: 14,
-    fontWeight: 'bold',
-    fontFamily: 'monospace',
+    color: COLOR_TEXT,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1.5,
   }
 });
