@@ -1,5 +1,5 @@
 import { Skia, BlurStyle, type SkCanvas, type SkImage, type SkPicture } from '@shopify/react-native-skia';
-import { MISSILE_SIZE } from '../engine/Constants';
+import { MISSILES, type MissileType } from '../engine/Weapons';
 import { bake, fillPaint, linear, poly, radial, record, shaderPaint, strokePaint } from './gfx';
 
 // Sprites are authored facing RIGHT. Enemies are mirrored at draw time.
@@ -95,6 +95,11 @@ const GUNSHIP_PALETTE: GunshipPalette = {
   wingNear: ['#6f7558', '#2f3326'], wingFar: '#23261c', accent: '#e08a2c',
 };
 
+const BOSS_PALETTE: GunshipPalette = {
+  bodyTop: '#8d92a3', bodyMid: '#484d5e', bodyLow: '#1c1f28',
+  wingNear: ['#5d6277', '#22252f'], wingFar: '#15171d', accent: '#e0322b',
+};
+
 const drawGunship = (c: SkCanvas, pal: GunshipPalette) => {
   // Far wing + far engine
   c.drawPath(poly([[47, 14], [38, 1.5], [24, 1.5], [29, 14]]), fillPaint(pal.wingFar));
@@ -146,7 +151,7 @@ const drawGunship = (c: SkCanvas, pal: GunshipPalette) => {
   c.drawLine(10, 12.8, 40, 12.5, strokePaint('rgba(255,255,255,0.35)', 0.9));
 };
 
-const drawMissile = (c: SkCanvas) => {
+const drawHomingMissile = (c: SkCanvas) => {
   // Tail fins
   c.drawPath(poly([[7, 1.6], [2, 0], [0, 0], [3.6, 3.2]]), fillPaint('#3a424b'));
   c.drawPath(poly([[7, 6.4], [2, 8], [0, 8], [3.6, 4.8]]), fillPaint('#2b3239'));
@@ -157,6 +162,35 @@ const drawMissile = (c: SkCanvas) => {
   // Warhead
   c.drawPath(poly([[23, 1.4], [28, 4], [23, 6.6]]), shaderPaint(linear(0, 1.4, 0, 6.6, ['#ff6a55', '#8e1710'])));
   c.drawLine(7, 2.2, 22, 2.2, strokePaint('rgba(255,255,255,0.6)', 0.7));
+};
+
+// Fat, slow, orange shell with a dark armoured nose
+const drawBlastMissile = (c: SkCanvas) => {
+  c.drawPath(poly([[8, 1.5], [3, 0], [0, 0], [4.5, 4.2]]), fillPaint('#3a2a22'));
+  c.drawPath(poly([[8, 9.5], [3, 11], [0, 11], [4.5, 6.8]]), fillPaint('#2a1d17'));
+  c.drawRRect(Skia.RRectXY(Skia.XYWHRect(5, 0.8, 21, 9.4), 4.2, 4.2),
+    shaderPaint(linear(0, 0.8, 0, 10.2, ['#ffd896', '#ff8f2d', '#9c3d0a'], [0, 0.45, 1])));
+  c.drawRect(Skia.XYWHRect(13, 0.8, 2.4, 9.4), fillPaint('#2b1d14'));
+  c.drawRect(Skia.XYWHRect(18.5, 0.8, 1.2, 9.4), fillPaint('#2b1d14'));
+  c.drawPath(poly([[25, 1.2], [30, 5.5], [25, 9.8]]), shaderPaint(linear(0, 1.2, 0, 9.8, ['#5a4a42', '#1d1511'])));
+  c.drawLine(7, 2, 24, 2, strokePaint('rgba(255,255,255,0.55)', 0.9));
+};
+
+// Slender energy lance that glows cyan-white
+const drawLanceMissile = (c: SkCanvas) => {
+  const glow = Skia.Paint();
+  glow.setColor(Skia.Color('#43d9ff'));
+  glow.setMaskFilter(Skia.MaskFilter.MakeBlur(BlurStyle.Normal, 2.5, true));
+  c.drawRRect(Skia.RRectXY(Skia.XYWHRect(3, 0.8, 34, 4.4), 2.2, 2.2), glow);
+  c.drawRRect(Skia.RRectXY(Skia.XYWHRect(0, 1.6, 36, 2.8), 1.4, 1.4),
+    shaderPaint(linear(0, 0, 36, 0, ['rgba(95,227,255,0)', '#8eeeff', '#ffffff'], [0, 0.5, 1])));
+  c.drawPath(poly([[32, 0.6], [40, 3], [32, 5.4]]), fillPaint('#ffffff'));
+};
+
+const MISSILE_DRAW: Record<MissileType, (c: SkCanvas) => void> = {
+  homing: drawHomingMissile,
+  blast: drawBlastMissile,
+  lance: drawLanceMissile,
 };
 
 // Soft round glow sprite (baked once)
@@ -177,11 +211,13 @@ export interface Sprites {
   player: SkPicture;
   enemy: SkPicture;
   roamer: SkPicture;
-  missile: SkPicture;
+  boss: SkPicture;
+  missiles: Record<MissileType, SkPicture>;
   bullet: SkImage;
   enemyBullet: SkImage;
   flash: SkImage;
   engineGlow: SkImage;
+  engineGlowCyan: SkImage;
   fire: SkImage[];
   smoke: SkImage[];
 }
@@ -203,6 +239,7 @@ export const getSprites = (): Sprites => {
   const enemyBullet = glowImage(28, ['#ffffff', '#ffd9a0', 'rgba(255,90,40,0.9)', 'rgba(255,40,20,0)'], [0, 0.2, 0.5, 1]);
   const flash = glowImage(64, ['#ffffff', 'rgba(255,238,170,0.9)', 'rgba(255,170,60,0.35)', 'rgba(255,120,30,0)'], [0, 0.25, 0.6, 1]);
   const engineGlow = glowImage(48, ['rgba(255,255,255,0.95)', 'rgba(130,200,255,0.7)', 'rgba(255,150,50,0.35)', 'rgba(255,100,20,0)'], [0, 0.18, 0.5, 1]);
+  const engineGlowCyan = glowImage(48, ['rgba(255,255,255,0.95)', 'rgba(110,230,255,0.75)', 'rgba(60,170,255,0.35)', 'rgba(40,120,255,0)'], [0, 0.18, 0.5, 1]);
   const fire = FIRE_RAMP.map(col => glowImage(32, [hexAlpha(col, 1), hexAlpha(col, 0.92), hexAlpha(col, 0)], [0, 0.55, 1]));
   const smoke = SMOKE_RAMP.map(col => glowImage(32, [hexAlpha(col, 0.7), hexAlpha(col, 0.4), hexAlpha(col, 0)], [0, 0.5, 1]));
 
@@ -210,8 +247,13 @@ export const getSprites = (): Sprites => {
     player: record(JET_FRAME.width, JET_FRAME.height, c => drawJet(c, PLAYER_PALETTE)),
     enemy: record(JET_FRAME.width, JET_FRAME.height, c => drawJet(c, ENEMY_PALETTE)),
     roamer: record(GUNSHIP_FRAME.width, GUNSHIP_FRAME.height, c => drawGunship(c, GUNSHIP_PALETTE)),
-    missile: record(MISSILE_SIZE.width, MISSILE_SIZE.height, drawMissile),
-    bullet, enemyBullet, flash, engineGlow, fire, smoke,
+    boss: record(GUNSHIP_FRAME.width, GUNSHIP_FRAME.height, c => drawGunship(c, BOSS_PALETTE)),
+    missiles: {
+      homing: record(MISSILES.homing.size.width, MISSILES.homing.size.height, MISSILE_DRAW.homing),
+      blast: record(MISSILES.blast.size.width, MISSILES.blast.size.height, MISSILE_DRAW.blast),
+      lance: record(MISSILES.lance.size.width, MISSILES.lance.size.height, MISSILE_DRAW.lance),
+    },
+    bullet, enemyBullet, flash, engineGlow, engineGlowCyan, fire, smoke,
   };
   return cache;
 };

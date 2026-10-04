@@ -1,6 +1,6 @@
 import { Skia, BlendMode, StrokeCap, type SkCanvas, type SkImage, type SkPicture } from '@shopify/react-native-skia';
-import { PLANE_SIZE, ENEMY_SIZE, ROAMER_SIZE } from '../engine/Constants';
-import { EnemyType, type Enemy, type GameState, type Particle } from '../engine/GameLoop';
+import { PLANE_SIZE, ENEMY_SIZE, ROAMER_SIZE, BOSS_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT } from '../engine/Constants';
+import { EnemyType, type Boss, type Enemy, type GameState, type Particle } from '../engine/GameLoop';
 import { GROUND_Y, drawBackdrop, drawVignette } from './Backdrop';
 import { createPictureUnbounded, fillPaint, strokePaint } from './gfx';
 import { GUNSHIP_FRAME, JET_FRAME, getSprites, type Sprites } from './Sprites';
@@ -87,6 +87,23 @@ const drawEnemy = (c: SkCanvas, S: Sprites, e: Enemy, frameCount: number) => {
   }
 };
 
+const drawBoss = (c: SkCanvas, S: Sprites, b: Boss, frameCount: number) => {
+  drawShadow(c, b.x, b.y, b.width, b.height);
+  drawAircraft(c, {
+    pic: S.boss, frame: GUNSHIP_FRAME, x: b.x, y: b.y, w: BOSS_SIZE.width, h: BOSS_SIZE.height,
+    flip: true, tilt: b.dying > 0 ? 6 : b.vy * 1.5, hit: b.hitFlash > 0,
+    glows: [[5, 18, 26], [22, 29, 22], [4, 22, 20]], frameCount, S,
+  });
+  if (b.dying === 0) {
+    // Pulsing red core + warning light, hotter in phase 2
+    const pulse = 0.55 + 0.45 * Math.sin(frameCount * (b.phase === 2 ? 0.45 : 0.2));
+    blit(c, S.flash, b.x + b.width * 0.66, b.y + b.height * 0.2, 26, additivePaint, 0.35 + 0.5 * pulse);
+    if (b.phase === 2 && frameCount % 6 < 3) {
+      blit(c, S.fire[3], b.x + b.width * 0.36, b.y + b.height * 0.5, 18, normalPaint, 0.9);
+    }
+  }
+};
+
 const drawParticle = (c: SkCanvas, S: Sprites, p: Particle) => {
   const t = 1 - p.life / p.maxLife;
   switch (p.kind) {
@@ -132,26 +149,29 @@ export const renderFrame = (state: GameState): SkPicture =>
 
     drawBackdrop(c, f);
 
-    const playerAlive = plane.y > -500;
+    const playerAlive = plane.alive;
+    const blinkHidden = plane.invulnerable > 0 && Math.floor(plane.invulnerable / 5) % 2 === 0;
     if (playerAlive) drawShadow(c, plane.x, plane.y, plane.width, plane.height);
 
     state.enemies.forEach(e => drawEnemy(c, S, e, f));
+    if (state.boss) drawBoss(c, S, state.boss, f);
 
     // Smoke sits behind the aircraft, fire and sparks in front
     state.particles.forEach(p => { if (p.kind === 'smoke') drawSmoke(c, S, p); });
 
     state.missiles.forEach(m => {
       const angle = (Math.atan2(m.vy, m.vx) * 180) / Math.PI;
+      const glow = m.type === 'lance' ? S.engineGlowCyan : S.engineGlow;
       c.save();
       c.translate(m.x + m.width / 2, m.y + m.height / 2);
       c.rotate(angle, 0, 0);
       c.translate(-m.width / 2, -m.height / 2);
-      blit(c, S.engineGlow, 0, m.height / 2, 20 * (0.8 + 0.2 * Math.sin(f * 2.3)), additivePaint, 0.95);
-      c.drawPicture(S.missile);
+      blit(c, glow, 0, m.height / 2, (m.type === 'blast' ? 26 : 20) * (0.8 + 0.2 * Math.sin(f * 2.3)), additivePaint, 0.95);
+      c.drawPicture(S.missiles[m.type]);
       c.restore();
     });
 
-    if (playerAlive) {
+    if (playerAlive && !blinkHidden) {
       drawAircraft(c, {
         pic: S.player, frame: JET_FRAME, x: plane.x, y: plane.y, w: PLANE_SIZE.width, h: PLANE_SIZE.height,
         flip: false, tilt: plane.tilt, hit: false, glows: [[2, 13.5, 24]], frameCount: f, S, muzzle: plane.muzzle > 0,
@@ -160,12 +180,34 @@ export const renderFrame = (state: GameState): SkPicture =>
 
     state.bullets.forEach(b => {
       normalPaint.setAlphaf(1);
-      c.drawImage(S.bullet, b.x + b.width - 25, b.y + b.height / 2 - 7, normalPaint);
+      if (b.vy === 0) {
+        c.drawImage(S.bullet, b.x + b.width - 25, b.y + b.height / 2 - 7, normalPaint);
+      } else {
+        c.save();
+        c.rotate((Math.atan2(b.vy, b.vx) * 180) / Math.PI, b.x + b.width, b.y + b.height / 2);
+        c.drawImage(S.bullet, b.x + b.width - 25, b.y + b.height / 2 - 7, normalPaint);
+        c.restore();
+      }
     });
     state.enemyBullets.forEach(b => blit(c, S.enemyBullet, b.x + b.width / 2, b.y + b.height / 2, 24, normalPaint, 1));
 
     state.particles.forEach(p => { if (p.kind !== 'smoke') drawParticle(c, S, p); });
 
     c.restore();
+    drawVignette(c);
+  });
+
+// Backdrop with the player's jet cruising, used behind the menu screens
+export const renderMenuFrame = (frame: number): SkPicture =>
+  createPictureUnbounded(c => {
+    const S = getSprites();
+    drawBackdrop(c, frame);
+    const x = SCREEN_WIDTH * 0.16;
+    const y = SCREEN_HEIGHT * 0.5 + Math.sin(frame * 0.035) * 14;
+    drawShadow(c, x, y, PLANE_SIZE.width, PLANE_SIZE.height);
+    drawAircraft(c, {
+      pic: S.player, frame: JET_FRAME, x, y, w: PLANE_SIZE.width, h: PLANE_SIZE.height,
+      flip: false, tilt: Math.cos(frame * 0.035) * 6, hit: false, glows: [[2, 13.5, 24]], frameCount: frame, S,
+    });
     drawVignette(c);
   });
