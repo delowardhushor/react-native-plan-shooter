@@ -9,8 +9,8 @@ export type AdPlacement = 'points' | 'doubleReward' | 'continue';
 const LIVE_UNIT_IDS: Partial<Record<AdPlacement, string>> = Platform.select({
   android: {
     continue: 'ca-app-pub-3142399721849091/4293085258',
-    // points: '...',        // menu / upgrade-screen "WATCH AD"
-    // doubleReward: '...',  // "DOUBLE POINTS" on the result card
+    points: 'ca-app-pub-3142399721849091/6725922882', // menu / upgrade-screen "WATCH AD"
+    doubleReward: 'ca-app-pub-3142399721849091/4155599867', // "DOUBLE POINTS" on the result card
   },
   default: {},
 });
