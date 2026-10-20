@@ -1,11 +1,16 @@
 import { Skia, BlurStyle, type SkCanvas, type SkImage, type SkPicture } from '@shopify/react-native-skia';
 import { MISSILES, type MissileType } from '../engine/Weapons';
+import { EnemyType } from '../engine/Enemies';
 import { bake, fillPaint, linear, poly, radial, record, shaderPaint, strokePaint } from './gfx';
 
 // Sprites are authored facing RIGHT. Enemies are mirrored at draw time.
 // Jet frame: 56 x 26. Gunship frame: 64 x 34. Missile frame: 28 x 8.
 export const JET_FRAME = { width: 56, height: 26 };
 export const GUNSHIP_FRAME = { width: 64, height: 34 };
+export const DELTA_FRAME = { width: 48, height: 20 };
+export const BOMBER_FRAME = { width: 80, height: 36 };
+export const SNIPER_FRAME = { width: 60, height: 22 };
+export const TITAN_FRAME = { width: 72, height: 40 };
 
 interface JetPalette {
   bodyTop: string;
@@ -151,6 +156,221 @@ const drawGunship = (c: SkCanvas, pal: GunshipPalette) => {
   c.drawLine(10, 12.8, 40, 12.5, strokePaint('rgba(255,255,255,0.35)', 0.9));
 };
 
+const WAVER_PALETTE: JetPalette = {
+  bodyTop: '#8cc7c0', bodyMid: '#3f7a74', bodyLow: '#183a3a',
+  wingNear: ['#5fa099', '#1f4a48'], wingFar: '#142e2e', fin: '#5aa8a0',
+  canopy: ['#e7ffd8', '#3a9a5a'], accent: '#ffd23a',
+};
+
+const RUSHER_PALETTE: JetPalette = {
+  bodyTop: '#e09a78', bodyMid: '#98402c', bodyLow: '#3b1710',
+  wingNear: ['#c25d3c', '#4a1d12'], wingFar: '#2e120b', fin: '#c25d3c',
+  canopy: ['#fff1c8', '#c05a1a'], accent: '#ffcf3a',
+};
+
+const SNIPER_PALETTE: JetPalette = {
+  bodyTop: '#b39ccf', bodyMid: '#5f4d85', bodyLow: '#241c38',
+  wingNear: ['#8470ad', '#2c2342'], wingFar: '#1b1529', fin: '#8470ad',
+  canopy: ['#ffd6f4', '#8a2a9a'], accent: '#ff3fb0',
+};
+
+const BOMBER_PALETTE: JetPalette = {
+  bodyTop: '#bfae86', bodyMid: '#7d6c4a', bodyLow: '#36301f',
+  wingNear: ['#988662', '#3d3524'], wingFar: '#2a2418', fin: '#8f7e5a',
+  canopy: ['#ffe9b8', '#a66a1c'], accent: '#d8392b',
+};
+
+const CARRIER_PALETTE: JetPalette = {
+  bodyTop: '#9bb2cc', bodyMid: '#4a6483', bodyLow: '#1b2a3f',
+  wingNear: ['#6482a4', '#223248'], wingFar: '#14202f', fin: '#6482a4',
+  canopy: ['#d6f6ff', '#2a7fb0'], accent: '#3ad0ff',
+};
+
+const PHANTOM_PALETTE: JetPalette = {
+  bodyTop: '#9488ba', bodyMid: '#483d6e', bodyLow: '#16122a',
+  wingNear: ['#645a8f', '#1f1936'], wingFar: '#110d20', fin: '#6a5f96',
+  canopy: ['#d9fbff', '#2a8ab0'], accent: '#43e0ff',
+};
+
+const TITAN_PALETTE: JetPalette = {
+  bodyTop: '#b3aaa6', bodyMid: '#5d4b4b', bodyLow: '#221a1a',
+  wingNear: ['#7a6666', '#2a1f1f'], wingFar: '#171010', fin: '#7a6666',
+  canopy: ['#ffd9c8', '#a8301f'], accent: '#ff3b2a',
+};
+
+// Swept delta wing: small and quick as the rusher, larger with wing pods as the Phantom boss
+const drawDelta = (c: SkCanvas, pal: JetPalette, boss: boolean) => {
+  c.drawPath(poly([[30, 9], [14, 0.5], [8, 0.5], [16, 9]]), fillPaint(pal.wingFar));
+  c.drawPath(poly([[14, 8], [6, 1.5], [2, 1.5], [5, 8.4]]), shaderPaint(linear(0, 1.5, 0, 8, [pal.fin, pal.bodyMid])));
+  c.drawPath(poly([[10.4, 2.6], [6.4, 2.6], [7.4, 4.6], [10.8, 4.6]]), fillPaint(pal.accent));
+
+  const body = Skia.PathBuilder.Make();
+  body.moveTo(48, 10);
+  body.lineTo(34, 7.6);
+  body.lineTo(6, 7.4);
+  body.lineTo(2, 8.6);
+  body.lineTo(2, 11.4);
+  body.lineTo(6, 12.6);
+  body.lineTo(34, 12.4);
+  body.close();
+  c.drawPath(body.build(), shaderPaint(linear(0, 7.4, 0, 12.6, [pal.bodyTop, pal.bodyMid, pal.bodyLow], [0, 0.5, 1])));
+
+  c.drawPath(poly([[36, 11.6], [16, 19.5], [7, 19.5], [14, 11.6]]), shaderPaint(linear(0, 11.6, 0, 19.5, pal.wingNear)));
+  c.drawLine(36, 11.6, 16, 19.5, strokePaint('rgba(255,255,255,0.4)', 0.8));
+  c.drawRect(Skia.XYWHRect(8, 9.4, 22, 1.2), fillPaint(pal.accent));
+
+  c.drawPath(poly([[28, 7.8], [31, 5.2], [37, 5.4], [41, 8.2]]), shaderPaint(linear(0, 5.2, 0, 8.2, pal.canopy)));
+  c.drawLine(12, 7.8, 34, 7.7, strokePaint('rgba(255,255,255,0.4)', 0.7));
+  c.drawRRect(Skia.RRectXY(Skia.XYWHRect(1.4, 8.4, 2.6, 3.2), 0.8, 0.8), fillPaint('#1d2228'));
+
+  if (boss) {
+    // Wing-tip pods and a glowing seam give the boss a menacing silhouette
+    c.drawOval(Skia.XYWHRect(10, 17, 12, 3.4), fillPaint(pal.bodyLow));
+    c.drawCircle(21.5, 18.7, 1.2, fillPaint(pal.accent));
+    c.drawOval(Skia.XYWHRect(14, 0, 12, 2.6), fillPaint(pal.wingFar));
+    c.drawCircle(25, 1.3, 1, fillPaint(pal.accent));
+    c.drawLine(8, 10, 40, 10, strokePaint(pal.accent, 0.6));
+  }
+};
+
+// Heavy twin-engine bomber; the carrier boss adds hangar doors and a radar dish
+const drawBomber = (c: SkCanvas, pal: JetPalette, carrier: boolean) => {
+  c.drawPath(poly([[56, 15], [44, 2], [28, 2], [36, 15]]), fillPaint(pal.wingFar));
+  c.drawPath(poly([[22, 13], [10, 0.8], [2, 0.8], [6, 13.5]]), shaderPaint(linear(0, 0.8, 0, 13, [pal.fin, pal.bodyMid])));
+  c.drawPath(poly([[12.6, 3], [6.4, 3], [8, 7], [14, 7]]), fillPaint(pal.accent));
+
+  const body = Skia.PathBuilder.Make();
+  body.moveTo(80, 19.5);
+  body.cubicTo(73, 14.5, 61, 12.4, 48, 12.2);
+  body.lineTo(10, 12.8);
+  body.lineTo(3, 15.5);
+  body.lineTo(3, 24.5);
+  body.lineTo(10, 27.2);
+  body.lineTo(48, 27.6);
+  body.cubicTo(61, 27.6, 73, 24.4, 80, 19.5);
+  body.close();
+  c.drawPath(body.build(), shaderPaint(linear(0, 12, 0, 27.6, [pal.bodyTop, pal.bodyMid, pal.bodyLow], [0, 0.5, 1])));
+
+  const lines = strokePaint('rgba(0,0,0,0.25)', 0.7);
+  [16, 26, 36, 46].forEach(x => c.drawLine(x, 12.8, x, 27.4, lines));
+  c.drawRect(Skia.XYWHRect(12, 21.6, 44, 1.6), fillPaint(pal.accent));
+
+  c.drawPath(poly([[58, 25], [40, 35.5], [22, 35.5], [32, 25]]), shaderPaint(linear(0, 25, 0, 35.5, pal.wingNear)));
+  c.drawLine(58, 25, 40, 35.5, strokePaint('rgba(255,255,255,0.35)', 0.9));
+  c.drawOval(Skia.XYWHRect(28, 28.5, 24, 7), shaderPaint(linear(0, 28.5, 0, 35.5, [pal.bodyTop, pal.bodyLow])));
+  c.drawOval(Skia.XYWHRect(47, 29.4, 4.6, 5.2), fillPaint('#0d0f0a'));
+  c.drawOval(Skia.XYWHRect(27.5, 30, 3, 4), fillPaint('#ff9a3c'));
+
+  const glass = Skia.PathBuilder.Make();
+  glass.moveTo(60, 13.2);
+  glass.cubicTo(64, 9.4, 71, 10.6, 75, 16.4);
+  glass.lineTo(60, 15.6);
+  glass.close();
+  c.drawPath(glass.build(), shaderPaint(linear(0, 9.6, 0, 16, pal.canopy)));
+  c.drawLine(12, 13.2, 48, 12.9, strokePaint('rgba(255,255,255,0.35)', 0.9));
+
+  if (carrier) {
+    c.drawRect(Skia.XYWHRect(22, 15.4, 28, 6), fillPaint('rgba(5,10,18,0.75)'));
+    [30, 38, 46].forEach(x => c.drawLine(x, 15.4, x, 21.4, strokePaint(pal.accent, 0.8)));
+    c.drawLine(40, 12.4, 40, 7.6, strokePaint(pal.bodyLow, 1));
+    c.drawOval(Skia.XYWHRect(34, 5.6, 12, 3.2), fillPaint(pal.bodyTop));
+    c.drawCircle(40, 7.2, 1, fillPaint(pal.accent));
+  }
+};
+
+// Slender sniper: long needle nose with a glowing red-eyed lens
+const drawSniper = (c: SkCanvas, pal: JetPalette) => {
+  c.drawPath(poly([[36, 10], [26, 2], [22, 2], [28, 10]]), fillPaint(pal.wingFar));
+  c.drawPath(poly([[14, 9.5], [7, 2], [3, 2], [6, 9.8]]), shaderPaint(linear(0, 2, 0, 9.5, [pal.fin, pal.bodyMid])));
+  c.drawPath(poly([[8.4, 3.2], [5, 3.2], [5.8, 5.4], [9.2, 5.4]]), fillPaint(pal.accent));
+
+  const body = Skia.PathBuilder.Make();
+  body.moveTo(60, 11.4);
+  body.lineTo(46, 9.6);
+  body.lineTo(8, 9.4);
+  body.lineTo(3, 10.4);
+  body.lineTo(3, 12.8);
+  body.lineTo(8, 13.8);
+  body.lineTo(46, 13.6);
+  body.close();
+  c.drawPath(body.build(), shaderPaint(linear(0, 9.4, 0, 13.8, [pal.bodyTop, pal.bodyMid, pal.bodyLow], [0, 0.5, 1])));
+
+  c.drawPath(poly([[40, 12.6], [26, 21.5], [19, 21.5], [25, 12.6]]), shaderPaint(linear(0, 12.6, 0, 21.5, pal.wingNear)));
+  c.drawLine(40, 12.6, 26, 21.5, strokePaint('rgba(255,255,255,0.4)', 0.8));
+  c.drawPath(poly([[34, 9.6], [37, 7], [43, 7.2], [46, 9.6]]), shaderPaint(linear(0, 7, 0, 9.6, pal.canopy)));
+  c.drawLine(10, 9.8, 44, 9.8, strokePaint('rgba(255,255,255,0.4)', 0.7));
+  c.drawCircle(52, 11.4, 1.5, fillPaint(pal.accent));
+  c.drawCircle(52, 11.4, 0.6, fillPaint('#ffffff'));
+  c.drawRRect(Skia.RRectXY(Skia.XYWHRect(1.6, 10.2, 2.6, 3), 0.8, 0.8), fillPaint('#1d2228'));
+};
+
+// Flying fortress: armoured slab hull, twin cannons and a pulsing reactor dome
+const drawTitan = (c: SkCanvas, pal: JetPalette) => {
+  c.drawPath(poly([[48, 8], [38, 0.8], [22, 0.8], [26, 8]]), shaderPaint(linear(0, 0.8, 0, 8, [pal.wingNear[0], pal.wingFar])));
+  c.drawPath(poly([[48, 32], [38, 39.2], [22, 39.2], [26, 32]]), shaderPaint(linear(0, 32, 0, 39.2, [pal.wingNear[0], pal.wingFar])));
+
+  const hull = Skia.PathBuilder.Make();
+  hull.moveTo(72, 20);
+  hull.lineTo(62, 10);
+  hull.lineTo(40, 6);
+  hull.lineTo(12, 8);
+  hull.lineTo(2, 14);
+  hull.lineTo(2, 26);
+  hull.lineTo(12, 32);
+  hull.lineTo(40, 34);
+  hull.lineTo(62, 30);
+  hull.close();
+  c.drawPath(hull.build(), shaderPaint(linear(0, 6, 0, 34, [pal.bodyTop, pal.bodyMid, pal.bodyLow], [0, 0.5, 1])));
+
+  const lines = strokePaint('rgba(0,0,0,0.3)', 0.8);
+  [14, 24, 34, 54].forEach(x => c.drawLine(x, 7, x, 33, lines));
+  c.drawRect(Skia.XYWHRect(10, 19.2, 24, 1.8), fillPaint(pal.accent));
+  c.drawLine(8, 9, 60, 11, strokePaint('rgba(255,255,255,0.35)', 0.9));
+
+  // Cannons
+  [14, 25].forEach(y => {
+    c.drawRect(Skia.XYWHRect(56, y, 14, 2.6), fillPaint('#14100f'));
+    c.drawRect(Skia.XYWHRect(68, y - 0.4, 3, 3.4), fillPaint(pal.accent));
+  });
+
+  // Reactor dome
+  c.drawCircle(44, 20, 8, fillPaint('#1b1111'));
+  c.drawCircle(44, 20, 6.2, shaderPaint(radial(44, 20, 6.2, ['#ffffff', '#ff8a5e', pal.accent, '#5a0f08'], [0, 0.25, 0.65, 1])));
+
+  [12, 18, 24].forEach(y => c.drawRect(Skia.XYWHRect(0.8, y, 3, 4), fillPaint('#1d2228')));
+};
+
+export interface Frame { width: number; height: number }
+type Glows = Array<[x: number, y: number, size: number]>;
+
+// Where each enemy's sprite is authored and where its engines glow (frame coordinates)
+export const ENEMY_FRAMES: Record<EnemyType, Frame> = {
+  [EnemyType.STANDARD]: JET_FRAME,
+  [EnemyType.ROAMER]: GUNSHIP_FRAME,
+  [EnemyType.WAVER]: JET_FRAME,
+  [EnemyType.RUSHER]: DELTA_FRAME,
+  [EnemyType.SNIPER]: SNIPER_FRAME,
+  [EnemyType.BOMBER]: BOMBER_FRAME,
+};
+
+export const ENEMY_GLOWS: Record<EnemyType, Glows> = {
+  [EnemyType.STANDARD]: [[2, 13.5, 22]],
+  [EnemyType.ROAMER]: [[22, 29, 18], [5, 18, 20]],
+  [EnemyType.WAVER]: [[2, 13.5, 22]],
+  [EnemyType.RUSHER]: [[2, 10, 20]],
+  [EnemyType.SNIPER]: [[2, 11.6, 18]],
+  [EnemyType.BOMBER]: [[3, 19.5, 22], [28, 32, 18]],
+};
+
+export const BOSS_FRAMES: Frame[] = [GUNSHIP_FRAME, BOMBER_FRAME, DELTA_FRAME, TITAN_FRAME];
+
+export const BOSS_GLOWS: Glows[] = [
+  [[5, 18, 26], [22, 29, 22], [4, 22, 20]],
+  [[3, 19.5, 28], [28, 32, 22]],
+  [[2, 10, 26]],
+  [[2, 14, 22], [2, 20, 26], [2, 26, 22]],
+];
+
 const drawHomingMissile = (c: SkCanvas) => {
   // Tail fins
   c.drawPath(poly([[7, 1.6], [2, 0], [0, 0], [3.6, 3.2]]), fillPaint('#3a424b'));
@@ -209,9 +429,8 @@ const hexAlpha = (hex: string, a: number) => {
 
 export interface Sprites {
   player: SkPicture;
-  enemy: SkPicture;
-  roamer: SkPicture;
-  boss: SkPicture;
+  enemies: Record<EnemyType, SkPicture>;
+  bosses: SkPicture[];
   missiles: Record<MissileType, SkPicture>;
   bullet: SkImage;
   enemyBullet: SkImage;
@@ -245,9 +464,20 @@ export const getSprites = (): Sprites => {
 
   cache = {
     player: record(JET_FRAME.width, JET_FRAME.height, c => drawJet(c, PLAYER_PALETTE)),
-    enemy: record(JET_FRAME.width, JET_FRAME.height, c => drawJet(c, ENEMY_PALETTE)),
-    roamer: record(GUNSHIP_FRAME.width, GUNSHIP_FRAME.height, c => drawGunship(c, GUNSHIP_PALETTE)),
-    boss: record(GUNSHIP_FRAME.width, GUNSHIP_FRAME.height, c => drawGunship(c, BOSS_PALETTE)),
+    enemies: {
+      [EnemyType.STANDARD]: record(JET_FRAME.width, JET_FRAME.height, c => drawJet(c, ENEMY_PALETTE)),
+      [EnemyType.ROAMER]: record(GUNSHIP_FRAME.width, GUNSHIP_FRAME.height, c => drawGunship(c, GUNSHIP_PALETTE)),
+      [EnemyType.WAVER]: record(JET_FRAME.width, JET_FRAME.height, c => drawJet(c, WAVER_PALETTE)),
+      [EnemyType.RUSHER]: record(DELTA_FRAME.width, DELTA_FRAME.height, c => drawDelta(c, RUSHER_PALETTE, false)),
+      [EnemyType.SNIPER]: record(SNIPER_FRAME.width, SNIPER_FRAME.height, c => drawSniper(c, SNIPER_PALETTE)),
+      [EnemyType.BOMBER]: record(BOMBER_FRAME.width, BOMBER_FRAME.height, c => drawBomber(c, BOMBER_PALETTE, false)),
+    },
+    bosses: [
+      record(GUNSHIP_FRAME.width, GUNSHIP_FRAME.height, c => drawGunship(c, BOSS_PALETTE)),
+      record(BOMBER_FRAME.width, BOMBER_FRAME.height, c => drawBomber(c, CARRIER_PALETTE, true)),
+      record(DELTA_FRAME.width, DELTA_FRAME.height, c => drawDelta(c, PHANTOM_PALETTE, true)),
+      record(TITAN_FRAME.width, TITAN_FRAME.height, c => drawTitan(c, TITAN_PALETTE)),
+    ],
     missiles: {
       homing: record(MISSILES.homing.size.width, MISSILES.homing.size.height, MISSILE_DRAW.homing),
       blast: record(MISSILES.blast.size.width, MISSILES.blast.size.height, MISSILE_DRAW.blast),

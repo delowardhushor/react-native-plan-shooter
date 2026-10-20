@@ -1,16 +1,13 @@
 import {
   SCREEN_WIDTH, SCREEN_HEIGHT, PLANE_SIZE, BULLET_SIZE, BULLET_SPEED, GROUND_HEIGHT,
-  ENEMY_SIZE, ENEMY_BULLET_SIZE, ROAMER_SIZE, BOSS_SIZE, ROAMER_SPEED_X, ROAMER_SPEED_Y,
-  ENEMY_STANDARD_HP, ENEMY_ROAMER_HP, PARTICLE_LIFETIME, PARTICLE_SPEED,
+  ENEMY_BULLET_SIZE, ROAMER_SPEED_X, ROAMER_SPEED_Y, PARTICLE_LIFETIME, PARTICLE_SPEED,
   PLAYER_SPEED, PLANE_MAX_TILT, MAX_PARTICLES, PLAYER_LIVES, RESPAWN_FRAMES, INVULNERABLE_FRAMES,
 } from './Constants';
 import { getLevelConfig, type LevelConfig } from './Levels';
 import { cannonStats, missileStats, type MissileType } from './Weapons';
+import { BOSS_DEFS, ENEMY_DEFS, EnemyType, bossKindFor } from './Enemies';
 
-export enum EnemyType {
-  STANDARD = 0,
-  ROAMER = 1
-}
+export { EnemyType };
 
 export interface Position {
   x: number;
@@ -34,13 +31,20 @@ export interface Plane extends Box {
 export interface Enemy extends Box {
   type: EnemyType;
   hp: number;
+  maxHp: number;
   vy: number;
   lastFiredFrame: number;
-  targetX?: number;
+  targetX: number;
   hitFlash: number; // frames of white hit-flash remaining
+  age: number;      // frames since spawning
+  baseY: number;    // centre line of a weaving flight path
+  mode: number;     // per-type behaviour state (rusher: 0 track, 1 lock on, 2 dash)
+  timer: number;
+  charge: number;   // 0..1 wind-up before a shot, drawn as a warning glow
 }
 
 export interface Boss extends Box {
+  kind: number;     // index into BOSS_DEFS, picks hull, movement and attack pattern
   hp: number;
   maxHp: number;
   vy: number;
@@ -49,6 +53,7 @@ export interface Boss extends Box {
   phase: 1 | 2;
   lastFiredFrame: number;
   volley: number;
+  burst: number;    // shots left in the current rapid-fire burst
   hitFlash: number;
   dying: number; // 0 while alive, then counts frames since defeat
 }
@@ -302,56 +307,74 @@ const winLevel = (s: GameState) => {
   s.missiles = [];
 };
 
-const spawnEnemy = (s: GameState) => {
-  const cfg = s.config;
-  const roamers = s.enemies.filter(e => e.type === EnemyType.ROAMER).length;
-  const isRoamer = Math.random() < cfg.roamerChance && roamers < cfg.maxRoamers;
-  const size = isRoamer ? ROAMER_SIZE : ENEMY_SIZE;
-  const y = rand(60, GROUND_Y - size.height - 6);
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-  if (isRoamer) {
-    s.enemies.push({
-      type: EnemyType.ROAMER,
-      hp: ENEMY_ROAMER_HP,
-      vy: ROAMER_SPEED_Y * (Math.random() > 0.5 ? 1 : -1),
-      lastFiredFrame: s.frameCount,
-      hitFlash: 0,
-      targetX: SCREEN_WIDTH * 0.45 + Math.random() * (SCREEN_WIDTH * 0.35),
-      x: SCREEN_WIDTH,
-      y,
-      width: size.width,
-      height: size.height,
-    });
-  } else {
-    s.enemies.push({
-      type: EnemyType.STANDARD,
-      hp: ENEMY_STANDARD_HP,
-      vy: 0,
-      lastFiredFrame: 0,
-      hitFlash: 0,
-      x: SCREEN_WIDTH,
-      y,
-      width: size.width,
-      height: size.height,
-    });
+const makeEnemy = (s: GameState, type: EnemyType, x: number, y: number): Enemy => {
+  const def = ENEMY_DEFS[type];
+  let targetX = SCREEN_WIDTH * 0.6;
+  if (type === EnemyType.ROAMER) targetX = SCREEN_WIDTH * 0.45 + Math.random() * (SCREEN_WIDTH * 0.35);
+  if (type === EnemyType.SNIPER) targetX = SCREEN_WIDTH * 0.62 + Math.random() * (SCREEN_WIDTH * 0.2);
+  if (type === EnemyType.RUSHER) targetX = SCREEN_WIDTH * 0.62 + Math.random() * (SCREEN_WIDTH * 0.15);
+  return {
+    type,
+    hp: def.hp,
+    maxHp: def.hp,
+    vy: type === EnemyType.ROAMER ? ROAMER_SPEED_Y * (Math.random() > 0.5 ? 1 : -1) : 0,
+    lastFiredFrame: s.frameCount + Math.floor(rand(0, 50)),
+    targetX,
+    hitFlash: 0,
+    age: 0,
+    baseY: y,
+    mode: 0,
+    timer: 0,
+    charge: 0,
+    x,
+    y,
+    width: def.size.width,
+    height: def.size.height,
+  };
+};
+
+// Weighted pick from what the level allows, skipping types already at their on-screen cap
+const pickEnemyType = (s: GameState): EnemyType => {
+  const open = s.config.roster.filter(r => s.enemies.filter(e => e.type === r.type).length < r.max);
+  const total = open.reduce((sum, r) => sum + r.weight, 0);
+  let roll = Math.random() * total;
+  for (const r of open) {
+    roll -= r.weight;
+    if (roll <= 0) return r.type;
   }
+  return EnemyType.STANDARD;
+};
+
+const spawnEnemy = (s: GameState) => {
+  const type = pickEnemyType(s);
+  const { height } = ENEMY_DEFS[type].size;
+  // Weavers need headroom on both sides of their centre line
+  const margin = type === EnemyType.WAVER ? 50 : 0;
+  const y = rand(60 + margin, Math.max(61 + margin, GROUND_Y - height - 6 - margin));
+  s.enemies.push(makeEnemy(s, type, SCREEN_WIDTH, y));
 };
 
 const spawnBoss = (s: GameState) => {
-  const hp = s.config.bossHp;
+  const kind = bossKindFor(s.config.bossIndex);
+  const def = BOSS_DEFS[kind];
+  const hp = Math.round(s.config.bossHp * def.hpMul);
   s.boss = {
+    kind,
     x: SCREEN_WIDTH + 10,
-    y: 90,
-    width: BOSS_SIZE.width,
-    height: BOSS_SIZE.height,
+    y: Math.min(90, GROUND_Y - def.size.height),
+    width: def.size.width,
+    height: def.size.height,
     hp,
     maxHp: hp,
     vy: 0.9,
-    targetX: SCREEN_WIDTH - BOSS_SIZE.width - 24,
+    targetX: SCREEN_WIDTH - def.size.width - 24,
     entered: false,
     phase: 1,
     lastFiredFrame: s.frameCount,
     volley: 0,
+    burst: 0,
     hitFlash: 0,
     dying: 0,
   };
@@ -359,6 +382,118 @@ const spawnBoss = (s: GameState) => {
 
 const fireEnemyBullet = (s: GameState, x: number, y: number, vx: number, vy: number) => {
   s.enemyBullets.push({ x, y, width: ENEMY_BULLET_SIZE.width, height: ENEMY_BULLET_SIZE.height, vx, vy });
+};
+
+// Fires toward where the player is right now, rotated by each offset (radians)
+const fireAimed = (s: GameState, ox: number, oy: number, speed: number, offsets: number[] = [0]) => {
+  const { plane } = s;
+  if (!plane.alive) return;
+  const base = Math.atan2(plane.y + plane.height / 2 - oy, plane.x + plane.width / 2 - ox);
+  offsets.forEach(o => fireEnemyBullet(s, ox, oy, Math.cos(base + o) * speed, Math.sin(base + o) * speed));
+};
+
+// Bullets fanned across the screen to the left, evenly spaced between -half and +half radians
+const fireFan = (s: GameState, ox: number, oy: number, speed: number, count: number, half: number, shift = 0) => {
+  for (let i = 0; i < count; i++) {
+    const a = (count === 1 ? 0 : -half + (i * 2 * half) / (count - 1)) + shift;
+    fireEnemyBullet(s, ox, oy, -Math.cos(a) * speed, Math.sin(a) * speed);
+  }
+};
+
+const updateEnemy = (s: GameState, e: Enemy, onSound: SoundFn) => {
+  const { config, plane } = s;
+  const maxY = GROUND_Y - e.height;
+  const cy = e.y + e.height / 2;
+  const prevY = e.y;
+  e.age += 1;
+  if (e.hitFlash > 0) e.hitFlash -= 1;
+
+  // Wounded planes trail smoke
+  if (e.maxHp >= 3 && e.hp <= e.maxHp * 0.4 && s.frameCount % 4 === 0) {
+    emit(s, 'smoke', e.x + e.width * 0.6, cy, rand(-1.4, -0.6), rand(-0.5, 0.2), rand(24, 36), rand(5, 8));
+  }
+
+  switch (e.type) {
+    case EnemyType.STANDARD:
+      e.x -= config.enemySpeed;
+      break;
+
+    case EnemyType.ROAMER:
+      if (e.x > e.targetX) {
+        e.x -= ROAMER_SPEED_X + 0.4;
+      } else {
+        e.y += e.vy;
+        if (e.y < 50 || e.y > maxY) e.vy *= -1;
+        if (s.frameCount - e.lastFiredFrame >= config.roamerFireRate) {
+          fireEnemyBullet(s, e.x, cy, -config.enemyBulletSpeed, 0);
+          e.lastFiredFrame = s.frameCount;
+          onSound('shoot');
+        }
+      }
+      break;
+
+    case EnemyType.WAVER:
+      e.x -= config.enemySpeed * 1.15;
+      e.y = clamp(e.baseY + Math.sin(e.age * 0.055) * 46, 50, maxY);
+      e.vy = e.y - prevY;
+      if (config.level >= 3 && e.x < SCREEN_WIDTH - 40 && s.frameCount - e.lastFiredFrame >= config.roamerFireRate * 1.6) {
+        fireEnemyBullet(s, e.x, cy, -config.enemyBulletSpeed, 0);
+        e.lastFiredFrame = s.frameCount;
+        onSound('shoot');
+      }
+      break;
+
+    case EnemyType.RUSHER: {
+      const dy = plane.y + plane.height / 2 - cy;
+      if (e.mode === 0) {
+        // Close in while lining up with the player
+        e.x -= 2.4;
+        if (plane.alive) e.y += clamp(dy, -1.8, 1.8);
+        if (e.x <= e.targetX) { e.mode = 1; e.timer = 36; }
+      } else if (e.mode === 1) {
+        // Locked on: barely adjusts, giving the player a moment to get out of the line
+        if (plane.alive) e.y += clamp(dy, -0.5, 0.5);
+        e.timer -= 1;
+        if (e.timer <= 0) e.mode = 2;
+      } else {
+        e.x -= 7.5;
+      }
+      e.y = clamp(e.y, 40, maxY);
+      e.vy = e.y - prevY;
+      break;
+    }
+
+    case EnemyType.SNIPER: {
+      const interval = Math.round(config.roamerFireRate * 1.3);
+      if (e.age >= 720) {
+        e.x -= 1.6; // gives up and leaves
+      } else if (e.x > e.targetX) {
+        e.x -= 1.3;
+      } else {
+        if (plane.alive) e.y += clamp((plane.y + plane.height / 2 - cy) * 0.02, -0.7, 0.7);
+        e.y = clamp(e.y, 50, maxY);
+        const since = s.frameCount - e.lastFiredFrame;
+        e.charge = clamp((since - (interval - 26)) / 26, 0, 1);
+        if (since >= interval && plane.alive) {
+          fireAimed(s, e.x, cy, config.enemyBulletSpeed * 1.05);
+          e.lastFiredFrame = s.frameCount;
+          e.charge = 0;
+          onSound('shoot');
+        }
+      }
+      e.vy = e.y - prevY;
+      break;
+    }
+
+    case EnemyType.BOMBER:
+      e.x -= config.enemySpeed * 0.5;
+      if (e.x < SCREEN_WIDTH - 90 && s.frameCount - e.lastFiredFrame >= config.roamerFireRate * 1.2) {
+        fireFan(s, e.x, cy, config.enemyBulletSpeed * 0.85, 3, 0.32);
+        e.lastFiredFrame = s.frameCount;
+        onSound('shoot');
+      }
+      break;
+  }
 };
 
 const updateBoss = (s: GameState, onSound: SoundFn) => {
@@ -392,27 +527,91 @@ const updateBoss = (s: GameState, onSound: SoundFn) => {
     return;
   }
 
-  boss.y += boss.vy * (boss.phase === 2 ? 1.4 : 1);
-  if (boss.y < 50) { boss.y = 50; boss.vy = Math.abs(boss.vy); }
-  if (boss.y > GROUND_Y - boss.height) { boss.y = GROUND_Y - boss.height; boss.vy = -Math.abs(boss.vy); }
+  const p2 = boss.phase === 2;
+  const def = BOSS_DEFS[boss.kind];
+  const ox = boss.x + 6;
+  const oy = boss.y + boss.height * def.muzzleY;
+  const speed = s.config.enemyBulletSpeed * 0.9;
+  const since = s.frameCount - boss.lastFiredFrame;
+  const top = 50;
+  const bottom = GROUND_Y - boss.height;
 
-  const interval = boss.phase === 2 ? 85 : 120;
-  if (s.frameCount - boss.lastFiredFrame >= interval) {
-    boss.lastFiredFrame = s.frameCount;
-    boss.volley += 1;
-    const speed = s.config.enemyBulletSpeed * 0.9;
-    const ox = boss.x + 6;
-    const oy = boss.y + boss.height * 0.56;
-    const spread = boss.phase === 2 ? [-0.3, -0.15, 0, 0.15, 0.3] : [-0.2, 0, 0.2];
-    spread.forEach(a => fireEnemyBullet(s, ox, oy, -Math.cos(a) * speed, Math.sin(a) * speed));
-    // Phase 2 adds a shot aimed straight at the player on alternate volleys
-    if (boss.phase === 2 && boss.volley % 2 === 0 && s.plane.alive) {
-      const dx = s.plane.x + s.plane.width / 2 - ox;
-      const dy = s.plane.y + s.plane.height / 2 - oy;
-      const d = Math.hypot(dx, dy) || 1;
-      fireEnemyBullet(s, ox, oy, (dx / d) * speed, (dy / d) * speed);
+  const bounce = (mul: number) => {
+    boss.y += boss.vy * mul;
+    if (boss.y < top) { boss.y = top; boss.vy = Math.abs(boss.vy); }
+    if (boss.y > bottom) { boss.y = bottom; boss.vy = -Math.abs(boss.vy); }
+  };
+
+  switch (boss.kind) {
+    case 0: {
+      // WARHAWK: steady patrol, spread volleys, aimed shots once wounded
+      bounce(p2 ? 1.4 : 1);
+      if (since >= (p2 ? 85 : 120)) {
+        boss.lastFiredFrame = s.frameCount;
+        boss.volley += 1;
+        const spread = p2 ? [-0.3, -0.15, 0, 0.15, 0.3] : [-0.2, 0, 0.2];
+        spread.forEach(a => fireEnemyBullet(s, ox, oy, -Math.cos(a) * speed, Math.sin(a) * speed));
+        if (p2 && boss.volley % 2 === 0) fireAimed(s, ox, oy, speed);
+        onSound('shoot');
+      }
+      break;
     }
-    onSound('shoot');
+
+    case 1: {
+      // IRON WHALE: slow carrier that keeps launching escort fighters behind lobbed shots
+      bounce(p2 ? 0.8 : 0.6);
+      if (since >= (p2 ? 200 : 290) && s.enemies.length < 4) {
+        boss.lastFiredFrame = s.frameCount;
+        boss.volley += 1;
+        const rusher = boss.volley % 2 === 1;
+        const type = rusher ? EnemyType.RUSHER : EnemyType.WAVER;
+        [0.3, 0.72].forEach(f => {
+          const e = makeEnemy(s, type, boss.x, boss.y + boss.height * f - ENEMY_DEFS[type].size.height / 2);
+          if (rusher) e.targetX = boss.x - 70;
+          s.enemies.push(e);
+        });
+        emit(s, 'flash', boss.x + 10, boss.y + boss.height * 0.5, 0, 0, 8, 26);
+        onSound('shoot');
+      }
+      if (s.frameCount % (p2 ? 100 : 140) === 0) {
+        fireAimed(s, ox, oy, speed * 0.85, p2 ? [-0.22, 0, 0.22] : [-0.12, 0.12]);
+        onSound('shoot');
+      }
+      break;
+    }
+
+    case 2: {
+      // PHANTOM: chases the player's altitude and spits rapid aimed bursts
+      const dy = s.plane.y + s.plane.height / 2 - (boss.y + boss.height / 2);
+      if (s.plane.alive) boss.y += clamp(dy, p2 ? -3 : -2.1, p2 ? 3 : 2.1);
+      boss.y = clamp(boss.y, top, bottom);
+      if (boss.burst > 0) {
+        if (s.frameCount % 7 === 0) {
+          fireAimed(s, ox, oy, speed * 1.1);
+          boss.burst -= 1;
+          onSound('shoot');
+        }
+      } else if (since >= (p2 ? 100 : 140)) {
+        boss.lastFiredFrame = s.frameCount;
+        boss.burst = p2 ? 5 : 3;
+      }
+      break;
+    }
+
+    default: {
+      // TITAN: slow fortress sweeping dense fans whose gaps shift every volley
+      bounce(p2 ? 0.8 : 0.6);
+      if (since >= (p2 ? 70 : 100)) {
+        boss.lastFiredFrame = s.frameCount;
+        boss.volley += 1;
+        const count = p2 ? 9 : 7;
+        const gap = (2 * 0.7) / (count - 1);
+        fireFan(s, ox, oy, speed * 0.8, count, 0.7, boss.volley % 2 === 0 ? gap / 2 : 0);
+        if (p2) fireAimed(s, ox, oy, speed * 0.9);
+        onSound('shoot');
+      }
+      break;
+    }
   }
 };
 
@@ -550,11 +749,11 @@ const reapEnemies = (s: GameState, onSound: SoundFn) => {
   for (let i = s.enemies.length - 1; i >= 0; i--) {
     const e = s.enemies[i];
     if (e.hp > 0) continue;
-    const isRoamer = e.type === EnemyType.ROAMER;
-    spawnExplosion(s, e.x + e.width / 2, e.y + e.height / 2, isRoamer ? 1.5 : 1);
-    if (isRoamer) s.shake = Math.max(s.shake, 7);
+    const def = ENEMY_DEFS[e.type];
+    spawnExplosion(s, e.x + e.width / 2, e.y + e.height / 2, def.boom);
+    if (def.boom > 1.2) s.shake = Math.max(s.shake, 4 + def.boom * 2);
     onSound('destroy');
-    s.score += isRoamer ? 50 : 10;
+    s.score += def.score;
     s.kills += 1;
     s.enemies.splice(i, 1);
   }
@@ -685,7 +884,7 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
   if (config.isBoss && s.bossState === 0 && s.kills >= config.killTarget) {
     s.bossState = 1;
     s.bossTimer = 130;
-    setBanner(s, 'WARNING', 'BOSS APPROACHING', 130);
+    setBanner(s, 'WARNING', `${BOSS_DEFS[bossKindFor(config.bossIndex)].name} APPROACHING`, 130);
   }
   if (s.bossState === 1) {
     s.bossTimer -= 1;
@@ -696,7 +895,8 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
   }
 
   // Spawn enemies (boss levels: only warm-up waves, then escorts once the boss is wounded)
-  const escortsOnly = s.bossState === 2 && s.boss && s.boss.phase === 2 && s.boss.dying === 0;
+  const escortsOnly = s.bossState === 2 && s.boss && s.boss.phase === 2 && s.boss.dying === 0
+    && !BOSS_DEFS[s.boss.kind].ownEscorts;
   const spawnAllowed = !config.isBoss || s.bossState === 0 || !!escortsOnly;
   s.spawnTimer -= 1;
   if (s.spawnTimer <= 0 && spawnAllowed) {
@@ -707,29 +907,7 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
   }
 
   // Move enemies
-  s.enemies.forEach(e => {
-    if (e.hitFlash > 0) e.hitFlash -= 1;
-    if (e.type === EnemyType.ROAMER && e.hp <= 2 && s.frameCount % 4 === 0) {
-      emit(s, 'smoke', e.x + e.width * 0.6, e.y + e.height / 2, rand(-1.4, -0.6), rand(-0.5, 0.2), rand(24, 36), rand(5, 8));
-    }
-    if (e.type === EnemyType.STANDARD) {
-      e.x -= config.enemySpeed;
-    } else {
-      const boundaryX = e.targetX || (SCREEN_WIDTH * 0.6);
-      if (e.x > boundaryX) {
-        e.x -= ROAMER_SPEED_X + 0.4;
-      } else {
-        e.y += e.vy;
-        if (e.y < 50 || e.y > GROUND_Y - e.height) e.vy *= -1;
-
-        if (s.frameCount - e.lastFiredFrame >= config.roamerFireRate) {
-          fireEnemyBullet(s, e.x, e.y + e.height / 2, -config.enemyBulletSpeed, 0);
-          e.lastFiredFrame = s.frameCount;
-          onSound('shoot');
-        }
-      }
-    }
-  });
+  s.enemies.forEach(e => updateEnemy(s, e, onSound));
   s.enemies = s.enemies.filter(e => e.x + e.width > 0);
 
   updateBoss(s, onSound);

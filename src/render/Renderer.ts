@@ -1,15 +1,17 @@
 import { Skia, BlendMode, StrokeCap, type SkCanvas, type SkImage, type SkPicture } from '@shopify/react-native-skia';
-import { PLANE_SIZE, ENEMY_SIZE, ROAMER_SIZE, BOSS_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT } from '../engine/Constants';
-import { EnemyType, type Boss, type Enemy, type GameState, type Particle } from '../engine/GameLoop';
+import { PLANE_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT } from '../engine/Constants';
+import { EnemyType } from '../engine/Enemies';
+import type { Boss, Enemy, GameState, Particle } from '../engine/GameLoop';
 import { GROUND_Y, drawBackdrop, drawVignette } from './Backdrop';
 import { createPictureUnbounded, fillPaint, strokePaint } from './gfx';
-import { GUNSHIP_FRAME, JET_FRAME, getSprites, type Sprites } from './Sprites';
+import { BOSS_FRAMES, BOSS_GLOWS, ENEMY_FRAMES, ENEMY_GLOWS, JET_FRAME, getSprites, type Sprites } from './Sprites';
 
 const normalPaint = Skia.Paint();
 const additivePaint = Skia.Paint();
 additivePaint.setBlendMode(BlendMode.Plus);
 const shadowPaint = fillPaint('#000000');
 const ringPaint = strokePaint('#fff1c4', 2);
+const lockPaint = strokePaint('#ff3b2a', 1.5);
 const sparkPaint = strokePaint('#ffd98a', 1.5);
 sparkPaint.setStrokeCap(StrokeCap.Round);
 sparkPaint.setBlendMode(BlendMode.Plus);
@@ -72,32 +74,44 @@ const drawAircraft = (c: SkCanvas, o: AircraftOpts) => {
   c.restore();
 };
 
+// Where each boss's pulsing core sits, as a fraction of its (mirrored) box
+const BOSS_CORE: Array<[x: number, y: number]> = [[0.66, 0.2], [0.5, 0.28], [0.45, 0.5], [0.39, 0.5]];
+
 const drawEnemy = (c: SkCanvas, S: Sprites, e: Enemy, frameCount: number) => {
   drawShadow(c, e.x, e.y, e.width, e.height);
-  if (e.type === EnemyType.ROAMER) {
-    drawAircraft(c, {
-      pic: S.roamer, frame: GUNSHIP_FRAME, x: e.x, y: e.y, w: ROAMER_SIZE.width, h: ROAMER_SIZE.height,
-      flip: true, tilt: e.vy * 2.2, hit: e.hitFlash > 0, glows: [[22, 29, 18], [5, 18, 20]], frameCount, S,
-    });
-  } else {
-    drawAircraft(c, {
-      pic: S.enemy, frame: JET_FRAME, x: e.x, y: e.y, w: ENEMY_SIZE.width, h: ENEMY_SIZE.height,
-      flip: true, tilt: 0, hit: e.hitFlash > 0, glows: [[2, 13.5, 22]], frameCount, S,
-    });
+  const dashing = e.type === EnemyType.RUSHER && e.mode === 2;
+  const glows = ENEMY_GLOWS[e.type].map(([gx, gy, size]) => [gx, gy, dashing ? size * 1.6 : size] as [number, number, number]);
+  const tilt = e.type === EnemyType.STANDARD || e.type === EnemyType.BOMBER ? 0 : e.vy * 2.2;
+  drawAircraft(c, {
+    pic: S.enemies[e.type], frame: ENEMY_FRAMES[e.type], x: e.x, y: e.y, w: e.width, h: e.height,
+    flip: true, tilt, hit: e.hitFlash > 0, glows, frameCount, S,
+  });
+
+  const noseY = e.y + e.height / 2;
+  if (e.type === EnemyType.RUSHER && e.mode === 1) {
+    // Lock-on: a thin line down the dash path plus a pulsing nose light
+    const pulse = 0.5 + 0.5 * Math.sin(frameCount * 0.9);
+    lockPaint.setAlphaf(0.25 + 0.35 * pulse);
+    c.drawLine(e.x, noseY, 0, noseY, lockPaint);
+    blit(c, S.flash, e.x + 2, noseY, 22 + 8 * pulse, additivePaint, 0.8);
+  }
+  if (e.type === EnemyType.SNIPER && e.charge > 0) {
+    blit(c, S.flash, e.x + 2, noseY, 10 + 26 * e.charge, additivePaint, 0.4 + 0.6 * e.charge);
   }
 };
 
 const drawBoss = (c: SkCanvas, S: Sprites, b: Boss, frameCount: number) => {
   drawShadow(c, b.x, b.y, b.width, b.height);
   drawAircraft(c, {
-    pic: S.boss, frame: GUNSHIP_FRAME, x: b.x, y: b.y, w: BOSS_SIZE.width, h: BOSS_SIZE.height,
+    pic: S.bosses[b.kind], frame: BOSS_FRAMES[b.kind], x: b.x, y: b.y, w: b.width, h: b.height,
     flip: true, tilt: b.dying > 0 ? 6 : b.vy * 1.5, hit: b.hitFlash > 0,
-    glows: [[5, 18, 26], [22, 29, 22], [4, 22, 20]], frameCount, S,
+    glows: BOSS_GLOWS[b.kind], frameCount, S,
   });
   if (b.dying === 0) {
     // Pulsing red core + warning light, hotter in phase 2
     const pulse = 0.55 + 0.45 * Math.sin(frameCount * (b.phase === 2 ? 0.45 : 0.2));
-    blit(c, S.flash, b.x + b.width * 0.66, b.y + b.height * 0.2, 26, additivePaint, 0.35 + 0.5 * pulse);
+    const [cx, cy] = BOSS_CORE[b.kind];
+    blit(c, S.flash, b.x + b.width * cx, b.y + b.height * cy, 26, additivePaint, 0.35 + 0.5 * pulse);
     if (b.phase === 2 && frameCount % 6 < 3) {
       blit(c, S.fire[3], b.x + b.width * 0.36, b.y + b.height * 0.5, 18, normalPaint, 0.9);
     }

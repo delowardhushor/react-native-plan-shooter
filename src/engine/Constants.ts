@@ -19,7 +19,6 @@ export const ENEMY_BULLET_SIZE = { width: 8, height: 8 };
 
 export const ENEMY_SIZE = { width: 44, height: 22 };
 export const ROAMER_SIZE = { width: 64, height: 34 };
-export const BOSS_SIZE = { width: 150, height: 78 };
 
 export const ROAMER_SPEED_X = 0.8; // moves left slowly
 export const ROAMER_SPEED_Y = 1.1; // gentle bobbing
