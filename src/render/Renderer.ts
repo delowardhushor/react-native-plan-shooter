@@ -1,10 +1,13 @@
 import { Skia, BlendMode, StrokeCap, type SkCanvas, type SkImage, type SkPicture } from '@shopify/react-native-skia';
 import { PLANE_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT } from '../engine/Constants';
 import { EnemyType } from '../engine/Enemies';
-import type { Boss, Enemy, GameState, Particle } from '../engine/GameLoop';
+import type { Boss, Enemy, EnemyBullet, GameState, Particle, Pickup } from '../engine/GameLoop';
 import { GROUND_Y, drawBackdrop, drawVignette } from './Backdrop';
 import { createPictureUnbounded, fillPaint, strokePaint } from './gfx';
-import { BOSS_FRAMES, BOSS_GLOWS, ENEMY_FRAMES, ENEMY_GLOWS, JET_FRAME, getSprites, type Sprites } from './Sprites';
+import {
+  BOSS_FRAMES, BOSS_GLOWS, ENEMY_FRAMES, ENEMY_GLOWS, JET_FRAME, MEDIC_FRAME, ROCKET_FRAME, SEEKER_FRAME,
+  getSprites, type Sprites,
+} from './Sprites';
 
 const normalPaint = Skia.Paint();
 const additivePaint = Skia.Paint();
@@ -12,6 +15,7 @@ additivePaint.setBlendMode(BlendMode.Plus);
 const shadowPaint = fillPaint('#000000');
 const ringPaint = strokePaint('#fff1c4', 2);
 const lockPaint = strokePaint('#ff3b2a', 1.5);
+const hurtPaint = fillPaint('#ff2a2a');
 const sparkPaint = strokePaint('#ffd98a', 1.5);
 sparkPaint.setStrokeCap(StrokeCap.Round);
 sparkPaint.setBlendMode(BlendMode.Plus);
@@ -71,6 +75,54 @@ const drawAircraft = (c: SkCanvas, o: AircraftOpts) => {
   if (o.hit) c.restore();
 
   if (o.muzzle) blit(c, o.S.flash, o.frame.width + 3, o.frame.height / 2 + 1, 18, additivePaint, 1);
+  c.restore();
+};
+
+const drawPickup = (c: SkCanvas, S: Sprites, p: Pickup, frameCount: number) => {
+  const cx = p.x + p.width / 2;
+  const cy = p.y + p.height / 2;
+  const pulse = 0.5 + 0.5 * Math.sin(frameCount * 0.12 + p.age * 0.02);
+  blit(c, S.healGlow, cx, cy, 58 + 14 * pulse, additivePaint, 0.55 + 0.35 * pulse);
+  c.save();
+  c.translate(cx, cy);
+  c.rotate(Math.sin(p.age * 0.05) * 6, 0, 0);
+  c.translate(-MEDIC_FRAME.width / 2, -MEDIC_FRAME.height / 2);
+  c.drawPicture(S.medic);
+  c.restore();
+};
+
+// Projectiles are authored pointing right and rotated to their heading
+const drawEnemyBullet = (c: SkCanvas, S: Sprites, b: EnemyBullet, frameCount: number) => {
+  const cx = b.x + b.width / 2;
+  const cy = b.y + b.height / 2;
+  if (b.kind === 'bullet') {
+    blit(c, S.enemyBullet, cx, cy, 24, normalPaint, 1);
+    return;
+  }
+  if (b.kind === 'orb') {
+    const pulse = 0.5 + 0.5 * Math.sin(frameCount * 0.3 + b.age * 0.1);
+    blit(c, S.orb, cx, cy, 34 + 6 * pulse, normalPaint, 1);
+    blit(c, S.flash, cx, cy, 16, additivePaint, 0.6);
+    return;
+  }
+
+  const angle = (Math.atan2(b.vy, b.vx) * 180) / Math.PI;
+  c.save();
+  c.translate(cx, cy);
+  c.rotate(angle, 0, 0);
+  const flicker = 0.8 + 0.2 * Math.sin(frameCount * 2.1);
+  if (b.kind === 'bolt') {
+    normalPaint.setAlphaf(1);
+    c.drawImage(S.bolt, -20, -7, normalPaint);
+  } else if (b.kind === 'rocket') {
+    blit(c, S.engineGlow, -ROCKET_FRAME.width / 2 - 2, 0, 18 * flicker, additivePaint, 0.95);
+    c.translate(-ROCKET_FRAME.width / 2, -ROCKET_FRAME.height / 2);
+    c.drawPicture(S.rocket);
+  } else {
+    blit(c, S.engineGlowCyan, -SEEKER_FRAME.width / 2, 0, 20 * flicker, additivePaint, 0.9);
+    c.translate(-SEEKER_FRAME.width / 2, -SEEKER_FRAME.height / 2);
+    c.drawPicture(S.seeker);
+  }
   c.restore();
 };
 
@@ -167,6 +219,7 @@ export const renderFrame = (state: GameState): SkPicture =>
     const blinkHidden = plane.invulnerable > 0 && Math.floor(plane.invulnerable / 5) % 2 === 0;
     if (playerAlive) drawShadow(c, plane.x, plane.y, plane.width, plane.height);
 
+    state.pickups.forEach(p => drawPickup(c, S, p, f));
     state.enemies.forEach(e => drawEnemy(c, S, e, f));
     if (state.boss) drawBoss(c, S, state.boss, f);
 
@@ -203,12 +256,21 @@ export const renderFrame = (state: GameState): SkPicture =>
         c.restore();
       }
     });
-    state.enemyBullets.forEach(b => blit(c, S.enemyBullet, b.x + b.width / 2, b.y + b.height / 2, 24, normalPaint, 1));
+    state.enemyBullets.forEach(b => drawEnemyBullet(c, S, b, f));
+
+    if (playerAlive && state.heal > 0) {
+      const t = state.heal / 40;
+      blit(c, S.healGlow, plane.x + plane.width / 2, plane.y + plane.height / 2, 70 + 60 * (1 - t), additivePaint, t);
+    }
 
     state.particles.forEach(p => { if (p.kind !== 'smoke') drawParticle(c, S, p); });
 
     c.restore();
     drawVignette(c);
+    if (state.hurt > 0) {
+      hurtPaint.setAlphaf((state.hurt / 18) * 0.3);
+      c.drawRect({ x: 0, y: 0, width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, hurtPaint);
+    }
   });
 
 // Backdrop with the player's jet cruising, used behind the menu screens

@@ -413,6 +413,42 @@ const MISSILE_DRAW: Record<MissileType, (c: SkCanvas) => void> = {
   lance: drawLanceMissile,
 };
 
+export const MEDIC_FRAME = { width: 28, height: 28 };
+export const ROCKET_FRAME = { width: 18, height: 8 };
+export const SEEKER_FRAME = { width: 18, height: 12 };
+
+// Floating repair crate: white case, red cross
+const drawMedic = (c: SkCanvas) => {
+  c.drawRRect(Skia.RRectXY(Skia.XYWHRect(1.5, 1.5, 25, 25), 6, 6),
+    shaderPaint(linear(0, 1.5, 0, 26.5, ['#ffffff', '#d4e6dc', '#8db5a0'])));
+  c.drawRRect(Skia.RRectXY(Skia.XYWHRect(1.5, 1.5, 25, 25), 6, 6), strokePaint('#2f8f5b', 1.6));
+  c.drawRect(Skia.XYWHRect(11, 5.5, 6, 17), fillPaint('#e5333d'));
+  c.drawRect(Skia.XYWHRect(5.5, 11, 17, 6), fillPaint('#e5333d'));
+  c.drawLine(11, 6, 17, 6, strokePaint('rgba(255,255,255,0.55)', 0.8));
+  c.drawLine(5, 3.6, 23, 3.6, strokePaint('rgba(255,255,255,0.7)', 1));
+};
+
+// Unguided warhead: grey body, orange band, red nose, flame at the tail
+const drawRocket = (c: SkCanvas) => {
+  c.drawPath(poly([[0, 4], [5, 1.4], [5, 6.6]]), fillPaint('#ffb43a'));
+  c.drawPath(poly([[3, 0], [7, 2.2], [3.6, 3.2]]), fillPaint('#3a424b'));
+  c.drawPath(poly([[3, 8], [7, 5.8], [3.6, 4.8]]), fillPaint('#2b3239'));
+  c.drawRRect(Skia.RRectXY(Skia.XYWHRect(4, 1.4, 10, 5.2), 2, 2),
+    shaderPaint(linear(0, 1.4, 0, 6.6, ['#e6ecf0', '#9aa6b1', '#56626d'], [0, 0.5, 1])));
+  c.drawRect(Skia.XYWHRect(8, 1.4, 1.6, 5.2), fillPaint('#f08a24'));
+  c.drawPath(poly([[13, 1.4], [18, 4], [13, 6.6]]), shaderPaint(linear(0, 1.4, 0, 6.6, ['#ff6a55', '#8e1710'])));
+};
+
+// Seeker drone: cyan hull, glowing red eye
+const drawSeeker = (c: SkCanvas) => {
+  c.drawPath(poly([[7, 3], [2, 0], [0, 0], [3.4, 4.6]]), fillPaint('#22405a'));
+  c.drawPath(poly([[7, 9], [2, 12], [0, 12], [3.4, 7.4]]), fillPaint('#1a3248'));
+  c.drawOval(Skia.XYWHRect(2, 2, 15, 8), shaderPaint(linear(0, 2, 0, 10, ['#bdeeff', '#3aa6d6', '#14405c'], [0, 0.5, 1])));
+  c.drawRect(Skia.XYWHRect(8, 2.4, 1.4, 7.2), fillPaint('#0f2c42'));
+  c.drawCircle(13.4, 6, 2.2, fillPaint('#ff3b3b'));
+  c.drawCircle(13.4, 6, 0.9, fillPaint('#ffffff'));
+};
+
 // Soft round glow sprite (baked once)
 const glowImage = (size: number, colors: string[], pos?: number[]) =>
   bake(size, size, c => {
@@ -432,6 +468,12 @@ export interface Sprites {
   enemies: Record<EnemyType, SkPicture>;
   bosses: SkPicture[];
   missiles: Record<MissileType, SkPicture>;
+  medic: SkPicture;
+  rocket: SkPicture;
+  seeker: SkPicture;
+  bolt: SkImage;
+  orb: SkImage;
+  healGlow: SkImage;
   bullet: SkImage;
   enemyBullet: SkImage;
   flash: SkImage;
@@ -454,6 +496,18 @@ export const getSprites = (): Sprites => {
     c.drawRRect(Skia.RRectXY(Skia.XYWHRect(8, 5.4, 17, 3.2), 1.6, 1.6),
       shaderPaint(linear(8, 0, 25, 0, ['rgba(255,210,80,0.0)', '#fff3b0', '#ffffff'], [0, 0.55, 1])));
   });
+
+  // Pulse-laser streak, authored pointing right like the other projectiles
+  const bolt = bake(40, 14, c => {
+    const glow = Skia.Paint();
+    glow.setColor(Skia.Color('#3ad8ff'));
+    glow.setMaskFilter(Skia.MaskFilter.MakeBlur(BlurStyle.Normal, 3, true));
+    c.drawRRect(Skia.RRectXY(Skia.XYWHRect(4, 4, 32, 6), 3, 3), glow);
+    c.drawRRect(Skia.RRectXY(Skia.XYWHRect(4, 5.4, 32, 3.2), 1.6, 1.6),
+      shaderPaint(linear(4, 0, 36, 0, ['rgba(120,230,255,0)', '#9cf0ff', '#ffffff'], [0, 0.6, 1])));
+  });
+  const orb = glowImage(48, ['#ffffff', '#ffd0b0', 'rgba(255,80,50,0.95)', 'rgba(200,20,30,0)'], [0, 0.2, 0.55, 1]);
+  const healGlow = glowImage(64, ['rgba(220,255,230,0.95)', 'rgba(90,255,160,0.5)', 'rgba(40,220,120,0)'], [0, 0.4, 1]);
 
   const enemyBullet = glowImage(28, ['#ffffff', '#ffd9a0', 'rgba(255,90,40,0.9)', 'rgba(255,40,20,0)'], [0, 0.2, 0.5, 1]);
   const flash = glowImage(64, ['#ffffff', 'rgba(255,238,170,0.9)', 'rgba(255,170,60,0.35)', 'rgba(255,120,30,0)'], [0, 0.25, 0.6, 1]);
@@ -483,6 +537,10 @@ export const getSprites = (): Sprites => {
       blast: record(MISSILES.blast.size.width, MISSILES.blast.size.height, MISSILE_DRAW.blast),
       lance: record(MISSILES.lance.size.width, MISSILES.lance.size.height, MISSILE_DRAW.lance),
     },
+    medic: record(MEDIC_FRAME.width, MEDIC_FRAME.height, drawMedic),
+    rocket: record(ROCKET_FRAME.width, ROCKET_FRAME.height, drawRocket),
+    seeker: record(SEEKER_FRAME.width, SEEKER_FRAME.height, drawSeeker),
+    bolt, orb, healGlow,
     bullet, enemyBullet, flash, engineGlow, engineGlowCyan, fire, smoke,
   };
   return cache;

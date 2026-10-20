@@ -1,4 +1,8 @@
 {
   "name": "PlaneShooter",
-  "displayName": "PlaneShooter"
+  "displayName": "PlaneShooter",
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-3142399721849091~8695364692",
+    "ios_app_id": "ca-app-pub-3940256099942544~1458002511"
+  }
 }

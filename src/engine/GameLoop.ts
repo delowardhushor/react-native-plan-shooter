@@ -1,8 +1,11 @@
 import {
   SCREEN_WIDTH, SCREEN_HEIGHT, PLANE_SIZE, BULLET_SIZE, BULLET_SPEED, GROUND_HEIGHT,
-  ENEMY_BULLET_SIZE, ROAMER_SPEED_X, ROAMER_SPEED_Y, PARTICLE_LIFETIME, PARTICLE_SPEED,
-  PLAYER_SPEED, PLANE_MAX_TILT, MAX_PARTICLES, PLAYER_LIVES, RESPAWN_FRAMES, INVULNERABLE_FRAMES,
+  ROAMER_SPEED_X, ROAMER_SPEED_Y, PARTICLE_LIFETIME, PARTICLE_SPEED,
+  PLAYER_SPEED, PLANE_MAX_TILT, MAX_PARTICLES, PICKUP_SIZE, ENEMY_CONTACT_DAMAGE, BOSS_CONTACT_DAMAGE,
+  HIT_INVULNERABLE_FRAMES, CONTINUE_INVULNERABLE_FRAMES,
 } from './Constants';
+import { medicHeal } from './Armor';
+import { PROJECTILES, type ProjectileKind } from './Projectiles';
 import { getLevelConfig, type LevelConfig } from './Levels';
 import { cannonStats, missileStats, type MissileType } from './Weapons';
 import { BOSS_DEFS, ENEMY_DEFS, EnemyType, bossKindFor } from './Enemies';
@@ -78,8 +81,18 @@ export interface Bullet extends Box {
 }
 
 export interface EnemyBullet extends Box {
+  kind: ProjectileKind;
   vx: number;
   vy: number;
+  damage: number;
+  age: number;
+  maxSpeed: number; // rockets accelerate toward it, seekers cruise at it
+}
+
+// Floating medic kit that drifts across the screen
+export interface Pickup extends Box {
+  baseY: number;
+  age: number;
 }
 
 export interface Missile extends Box {
@@ -93,6 +106,7 @@ export interface Missile extends Box {
 }
 
 export interface Loadout {
+  maxHp: number;
   cannon: number;
   missile: MissileType;
   missileLevel: number;
@@ -107,6 +121,7 @@ export interface GameState {
   enemyBullets: EnemyBullet[];
   enemies: Enemy[];
   boss: Boss | null;
+  pickups: Pickup[];
   particles: Particle[];
   config: LevelConfig;
   loadout: Loadout;
@@ -117,12 +132,15 @@ export interface GameState {
   spawnTimer: number;
   bossState: 0 | 1 | 2; // 0 = not yet, 1 = warning, 2 = boss fight
   bossTimer: number;
-  respawnTimer: number;
+  pickupTimer: number;
   banner: { title: string; sub: string } | null;
   bannerTimer: number;
   score: number;
   kills: number;
-  lives: number;
+  hp: number;
+  maxHp: number;
+  hurt: number; // frames of red screen flash remaining
+  heal: number; // frames of heal glow remaining
   level: number;
   shake: number; // screen-shake intensity, decays every frame
   status: GameStatus;
@@ -153,6 +171,7 @@ export const createInitialState = (level: number, loadout: Loadout): GameState =
     enemyBullets: [],
     enemies: [],
     boss: null,
+    pickups: [],
     particles: [],
     config,
     loadout,
@@ -163,7 +182,7 @@ export const createInitialState = (level: number, loadout: Loadout): GameState =
     spawnTimer: 100,
     bossState: 0,
     bossTimer: 0,
-    respawnTimer: 0,
+    pickupTimer: rand(600, 1000),
     banner: {
       title: `LEVEL ${level}`,
       sub: config.isBoss ? 'BOSS BATTLE AHEAD' : `DESTROY ${config.killTarget} ENEMY PLANES`,
@@ -171,7 +190,10 @@ export const createInitialState = (level: number, loadout: Loadout): GameState =
     bannerTimer: 150,
     score: 0,
     kills: 0,
-    lives: PLAYER_LIVES,
+    hp: loadout.maxHp,
+    maxHp: loadout.maxHp,
+    hurt: 0,
+    heal: 0,
     level,
     shake: 0,
     status: 'playing',
@@ -238,6 +260,8 @@ const updateEffects = (gameState: GameState) => {
     }
   });
   gameState.particles = gameState.particles.filter(p => p.life > 0);
+  if (gameState.hurt > 0) gameState.hurt -= 1;
+  if (gameState.heal > 0) gameState.heal -= 1;
   gameState.shake *= 0.88;
   if (gameState.shake < 0.3) gameState.shake = 0;
 };
@@ -280,22 +304,55 @@ const setBanner = (s: GameState, title: string, sub: string, frames: number) => 
   s.bannerTimer = frames;
 };
 
-const killPlayer = (s: GameState, onSound: SoundFn) => {
+// Applies damage; at zero hull the plane is lost and the run ends (the UI may offer a continue)
+const hurtPlayer = (s: GameState, amount: number, onSound: SoundFn) => {
   const { plane } = s;
-  spawnExplosion(s, plane.x + plane.width / 2, plane.y + plane.height / 2, 1.6);
+  s.hp = Math.max(0, s.hp - amount);
+  s.hurt = 18;
+  const cx = plane.x + plane.width / 2;
+  const cy = plane.y + plane.height / 2;
+
+  if (s.hp > 0) {
+    plane.invulnerable = HIT_INVULNERABLE_FRAMES;
+    spawnExplosion(s, cx, cy, 0.5);
+    s.shake = Math.max(s.shake, 9);
+    onSound('hit');
+    return;
+  }
+
+  spawnExplosion(s, cx, cy, 1.6);
   onSound('destroy');
   s.shake = 14;
   plane.alive = false;
   plane.vx = 0;
   plane.vy = 0;
-  s.lives -= 1;
   s.enemyBullets = [];
-  if (s.lives <= 0) {
-    s.status = 'lost';
-    s.endTimer = 0;
-  } else {
-    s.respawnTimer = RESPAWN_FRAMES;
-  }
+  s.status = 'lost';
+  s.endTimer = 0;
+};
+
+// Brings the player back after a rewarded continue: full hull, clear space around the spawn point
+export const revivePlayer = (s: GameState) => {
+  const { plane } = s;
+  s.status = 'playing';
+  s.endTimer = 0;
+  s.hp = s.maxHp;
+  s.hurt = 0;
+  s.missileRequested = false;
+  plane.alive = true;
+  plane.x = 20;
+  plane.y = SCREEN_HEIGHT / 2 - plane.height / 2;
+  plane.vx = 0;
+  plane.vy = 0;
+  plane.tilt = 0;
+  plane.invulnerable = CONTINUE_INVULNERABLE_FRAMES;
+  s.enemyBullets = [];
+  s.enemies = s.enemies.filter(e => {
+    if (e.x > SCREEN_WIDTH * 0.4) return true;
+    spawnExplosion(s, e.x + e.width / 2, e.y + e.height / 2, e.type === EnemyType.STANDARD ? 1 : 1.2);
+    return false;
+  });
+  setBanner(s, 'BACK IN ACTION', '', 90);
 };
 
 const winLevel = (s: GameState) => {
@@ -380,23 +437,43 @@ const spawnBoss = (s: GameState) => {
   };
 };
 
-const fireEnemyBullet = (s: GameState, x: number, y: number, vx: number, vy: number) => {
-  s.enemyBullets.push({ x, y, width: ENEMY_BULLET_SIZE.width, height: ENEMY_BULLET_SIZE.height, vx, vy });
+// (x, y) is the centre of the shot. Rockets start slow and build up to the given speed.
+const fireEnemyBullet = (s: GameState, x: number, y: number, vx: number, vy: number, kind: ProjectileKind = 'bullet') => {
+  const def = PROJECTILES[kind];
+  const maxSpeed = Math.hypot(vx, vy);
+  const launch = kind === 'rocket' ? 0.45 : 1;
+  s.enemyBullets.push({
+    kind,
+    x: x - def.size.width / 2,
+    y: y - def.size.height / 2,
+    width: def.size.width,
+    height: def.size.height,
+    vx: vx * launch,
+    vy: vy * launch,
+    damage: def.damage,
+    age: 0,
+    maxSpeed,
+  });
 };
 
 // Fires toward where the player is right now, rotated by each offset (radians)
-const fireAimed = (s: GameState, ox: number, oy: number, speed: number, offsets: number[] = [0]) => {
+const fireAimed = (
+  s: GameState, ox: number, oy: number, speed: number, offsets: number[] = [0], kind: ProjectileKind = 'bullet',
+) => {
   const { plane } = s;
   if (!plane.alive) return;
   const base = Math.atan2(plane.y + plane.height / 2 - oy, plane.x + plane.width / 2 - ox);
-  offsets.forEach(o => fireEnemyBullet(s, ox, oy, Math.cos(base + o) * speed, Math.sin(base + o) * speed));
+  offsets.forEach(o => fireEnemyBullet(s, ox, oy, Math.cos(base + o) * speed, Math.sin(base + o) * speed, kind));
 };
 
 // Bullets fanned across the screen to the left, evenly spaced between -half and +half radians
-const fireFan = (s: GameState, ox: number, oy: number, speed: number, count: number, half: number, shift = 0) => {
+const fireFan = (
+  s: GameState, ox: number, oy: number, speed: number, count: number, half: number, shift = 0,
+  kind: ProjectileKind = 'bullet',
+) => {
   for (let i = 0; i < count; i++) {
     const a = (count === 1 ? 0 : -half + (i * 2 * half) / (count - 1)) + shift;
-    fireEnemyBullet(s, ox, oy, -Math.cos(a) * speed, Math.sin(a) * speed);
+    fireEnemyBullet(s, ox, oy, -Math.cos(a) * speed, Math.sin(a) * speed, kind);
   }
 };
 
@@ -496,6 +573,49 @@ const updateEnemy = (s: GameState, e: Enemy, onSound: SoundFn) => {
   }
 };
 
+const SEEKER_LIFETIME = 280;
+
+const updateEnemyBullets = (s: GameState) => {
+  const { plane } = s;
+  s.enemyBullets.forEach(b => {
+    b.age += 1;
+    const cx = b.x + b.width / 2;
+    const cy = b.y + b.height / 2;
+
+    if (b.kind === 'rocket') {
+      // Builds up to full speed, trailing smoke
+      const sp = Math.hypot(b.vx, b.vy) || 1;
+      if (sp < b.maxSpeed) {
+        const k = Math.min(b.maxSpeed / sp, 1.04);
+        b.vx *= k;
+        b.vy *= k;
+      }
+      if (b.age % 2 === 0) emit(s, 'smoke', cx - b.vx * 1.5, cy - b.vy * 1.5, rand(-0.3, 0.3), rand(-0.3, 0.3), rand(18, 26), rand(3, 5));
+    } else if (b.kind === 'seeker' && plane.alive) {
+      // Slow, wide turns: easy to dodge in the open, dangerous when you're boxed in
+      const dx = plane.x + plane.width / 2 - cx;
+      const dy = plane.y + plane.height / 2 - cy;
+      const d = Math.hypot(dx, dy) || 1;
+      b.vx += ((dx / d) * b.maxSpeed - b.vx) * 0.035;
+      b.vy += ((dy / d) * b.maxSpeed - b.vy) * 0.035;
+      const sp = Math.hypot(b.vx, b.vy) || 1;
+      b.vx = (b.vx / sp) * b.maxSpeed;
+      b.vy = (b.vy / sp) * b.maxSpeed;
+    }
+
+    b.x += b.vx;
+    b.y += b.vy;
+  });
+
+  s.enemyBullets = s.enemyBullets.filter(b => {
+    if (b.kind === 'seeker' && b.age > SEEKER_LIFETIME) {
+      spawnExplosion(s, b.x + b.width / 2, b.y + b.height / 2, 0.5); // burns out
+      return false;
+    }
+    return b.x + b.width > -10 && b.x < SCREEN_WIDTH + 10 && b.y > -20 && b.y < GROUND_Y + 10;
+  });
+};
+
 const updateBoss = (s: GameState, onSound: SoundFn) => {
   const boss = s.boss;
   if (!boss) return;
@@ -544,21 +664,21 @@ const updateBoss = (s: GameState, onSound: SoundFn) => {
 
   switch (boss.kind) {
     case 0: {
-      // WARHAWK: steady patrol, spread volleys, aimed shots once wounded
+      // WARHAWK: steady patrol, rocket barrages, an aimed rocket too once wounded
       bounce(p2 ? 1.4 : 1);
       if (since >= (p2 ? 85 : 120)) {
         boss.lastFiredFrame = s.frameCount;
         boss.volley += 1;
         const spread = p2 ? [-0.3, -0.15, 0, 0.15, 0.3] : [-0.2, 0, 0.2];
-        spread.forEach(a => fireEnemyBullet(s, ox, oy, -Math.cos(a) * speed, Math.sin(a) * speed));
-        if (p2 && boss.volley % 2 === 0) fireAimed(s, ox, oy, speed);
+        spread.forEach(a => fireEnemyBullet(s, ox, oy, -Math.cos(a) * speed * 1.3, Math.sin(a) * speed * 1.3, def.weapon));
+        if (p2 && boss.volley % 2 === 0) fireAimed(s, ox, oy, speed * 1.3, [0], def.weapon);
         onSound('shoot');
       }
       break;
     }
 
     case 1: {
-      // IRON WHALE: slow carrier that keeps launching escort fighters behind lobbed shots
+      // IRON WHALE: slow carrier that launches escort fighters and homing seeker drones
       bounce(p2 ? 0.8 : 0.6);
       if (since >= (p2 ? 200 : 290) && s.enemies.length < 4) {
         boss.lastFiredFrame = s.frameCount;
@@ -573,21 +693,21 @@ const updateBoss = (s: GameState, onSound: SoundFn) => {
         emit(s, 'flash', boss.x + 10, boss.y + boss.height * 0.5, 0, 0, 8, 26);
         onSound('shoot');
       }
-      if (s.frameCount % (p2 ? 100 : 140) === 0) {
-        fireAimed(s, ox, oy, speed * 0.85, p2 ? [-0.22, 0, 0.22] : [-0.12, 0.12]);
+      if (s.frameCount % (p2 ? 110 : 160) === 0 && s.enemyBullets.filter(b => b.kind === 'seeker').length < 3) {
+        fireAimed(s, ox, oy, speed * 0.8, p2 ? [-0.5, 0.5] : [0], def.weapon);
         onSound('shoot');
       }
       break;
     }
 
     case 2: {
-      // PHANTOM: chases the player's altitude and spits rapid aimed bursts
+      // PHANTOM: chases the player's altitude and spits rapid pulse-laser bursts
       const dy = s.plane.y + s.plane.height / 2 - (boss.y + boss.height / 2);
       if (s.plane.alive) boss.y += clamp(dy, p2 ? -3 : -2.1, p2 ? 3 : 2.1);
       boss.y = clamp(boss.y, top, bottom);
       if (boss.burst > 0) {
         if (s.frameCount % 7 === 0) {
-          fireAimed(s, ox, oy, speed * 1.1);
+          fireAimed(s, ox, oy, speed * 1.5, [0], def.weapon);
           boss.burst -= 1;
           onSound('shoot');
         }
@@ -599,15 +719,15 @@ const updateBoss = (s: GameState, onSound: SoundFn) => {
     }
 
     default: {
-      // TITAN: slow fortress sweeping dense fans whose gaps shift every volley
+      // TITAN: slow fortress sweeping fans of plasma orbs whose gaps shift every volley
       bounce(p2 ? 0.8 : 0.6);
-      if (since >= (p2 ? 70 : 100)) {
+      if (since >= (p2 ? 95 : 130)) {
         boss.lastFiredFrame = s.frameCount;
         boss.volley += 1;
-        const count = p2 ? 9 : 7;
+        const count = p2 ? 7 : 5;
         const gap = (2 * 0.7) / (count - 1);
-        fireFan(s, ox, oy, speed * 0.8, count, 0.7, boss.volley % 2 === 0 ? gap / 2 : 0);
-        if (p2) fireAimed(s, ox, oy, speed * 0.9);
+        fireFan(s, ox, oy, speed * 0.75, count, 0.7, boss.volley % 2 === 0 ? gap / 2 : 0, def.weapon);
+        if (p2) fireAimed(s, ox, oy, speed * 0.85, [0], def.weapon);
         onSound('shoot');
       }
       break;
@@ -705,7 +825,23 @@ const blastAt = (s: GameState, m: Missile, onSound: SoundFn) => {
   });
 };
 
+// Seeker drones are the one enemy shot the player's cannon can destroy
+const shootDownSeekers = (s: GameState, onSound: SoundFn) => {
+  for (let j = s.bullets.length - 1; j >= 0; j--) {
+    const b = s.bullets[j];
+    const k = s.enemyBullets.findIndex(eb => eb.kind === 'seeker' && isRectCollision(b, eb));
+    if (k < 0) continue;
+    const seeker = s.enemyBullets[k];
+    spawnExplosion(s, seeker.x + seeker.width / 2, seeker.y + seeker.height / 2, 0.6);
+    onSound('hit');
+    s.score += 5;
+    s.enemyBullets.splice(k, 1);
+    s.bullets.splice(j, 1);
+  }
+};
+
 const resolveShots = (s: GameState, onSound: SoundFn) => {
+  shootDownSeekers(s, onSound);
   for (let j = s.bullets.length - 1; j >= 0; j--) {
     const b = s.bullets[j];
     const t = firstHit(s, b);
@@ -773,11 +909,13 @@ const resolvePlayerHits = (s: GameState, onSound: SoundFn) => {
   if (!plane.alive || plane.invulnerable > 0) return;
   const hb = playerHitbox(plane);
 
-  for (const b of s.enemyBullets) {
-    if (isRectCollision(hb, b)) {
-      killPlayer(s, onSound);
-      return;
-    }
+  for (let i = s.enemyBullets.length - 1; i >= 0; i--) {
+    const b = s.enemyBullets[i];
+    if (!isRectCollision(hb, b)) continue;
+    s.enemyBullets.splice(i, 1);
+    if (b.kind === 'seeker') spawnExplosion(s, b.x + b.width / 2, b.y + b.height / 2, 0.6);
+    hurtPlayer(s, b.damage, onSound);
+    return;
   }
 
   for (let i = s.enemies.length - 1; i >= 0; i--) {
@@ -785,14 +923,50 @@ const resolvePlayerHits = (s: GameState, onSound: SoundFn) => {
     if (e.hp > 0 && isRectCollision(hb, e)) {
       spawnExplosion(s, e.x + e.width / 2, e.y + e.height / 2, 1);
       s.enemies.splice(i, 1);
-      killPlayer(s, onSound);
+      hurtPlayer(s, ENEMY_CONTACT_DAMAGE, onSound);
       return;
     }
   }
 
   if (s.boss && s.boss.dying === 0 && isRectCollision(hb, s.boss)) {
-    killPlayer(s, onSound);
+    hurtPlayer(s, BOSS_CONTACT_DAMAGE, onSound);
   }
+};
+
+// Medic kits drift in from the left at random heights; one appears every so often while the hull is damaged
+const updatePickups = (s: GameState) => {
+  const { plane } = s;
+
+  s.pickupTimer -= 1;
+  if (s.pickupTimer <= 0) {
+    if (s.hp < s.maxHp && s.pickups.length === 0) {
+      const y = rand(70, GROUND_Y - PICKUP_SIZE.height - 24);
+      s.pickups.push({ x: -PICKUP_SIZE.width, y, baseY: y, age: 0, ...PICKUP_SIZE });
+      s.pickupTimer = rand(900, 1500);
+    } else {
+      s.pickupTimer = 180; // hull is fine (or one is already out there): check again shortly
+    }
+  }
+
+  s.pickups.forEach(p => {
+    p.age += 1;
+    p.x += 1.1;
+    p.y = clamp(p.baseY + Math.sin(p.age * 0.05) * 16, 50, GROUND_Y - p.height - 6);
+  });
+
+  if (plane.alive) {
+    for (let i = s.pickups.length - 1; i >= 0; i--) {
+      const p = s.pickups[i];
+      if (!isRectCollision(plane, p)) continue;
+      s.hp = Math.min(s.maxHp, s.hp + medicHeal(s.maxHp));
+      s.heal = 40;
+      emit(s, 'flash', p.x + p.width / 2, p.y + p.height / 2, 0, 0, 10, 34);
+      emit(s, 'ring', plane.x + plane.width / 2, plane.y + plane.height / 2, 0, 0, 20, 50);
+      s.pickups.splice(i, 1);
+    }
+  }
+
+  s.pickups = s.pickups.filter(p => p.x < SCREEN_WIDTH + 10);
 };
 
 export const updateGameState = (s: GameState, onSound: SoundFn) => {
@@ -808,19 +982,6 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
 
   const { plane, config } = s;
 
-  // Respawn after losing a life
-  if (!plane.alive && s.respawnTimer > 0) {
-    s.respawnTimer -= 1;
-    if (s.respawnTimer === 0) {
-      plane.alive = true;
-      plane.x = 20;
-      plane.y = SCREEN_HEIGHT / 2 - plane.height / 2;
-      plane.vx = 0;
-      plane.vy = 0;
-      plane.tilt = 0;
-      plane.invulnerable = INVULNERABLE_FRAMES;
-    }
-  }
   if (plane.invulnerable > 0) plane.invulnerable -= 1;
 
   if (plane.alive) {
@@ -873,10 +1034,7 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
     m.x < SCREEN_WIDTH + 40 && m.x + m.width > 0 && m.y < SCREEN_HEIGHT && m.y + m.height > 0
   );
 
-  s.enemyBullets.forEach(b => { b.x += b.vx; b.y += b.vy; });
-  s.enemyBullets = s.enemyBullets.filter(b =>
-    b.x + b.width > -10 && b.x < SCREEN_WIDTH + 10 && b.y > -20 && b.y < GROUND_Y + 10
-  );
+  updateEnemyBullets(s);
 
   updateEffects(s);
 
@@ -911,6 +1069,7 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
   s.enemies = s.enemies.filter(e => e.x + e.width > 0);
 
   updateBoss(s, onSound);
+  updatePickups(s);
 
   resolveShots(s, onSound);
   reapEnemies(s, onSound);

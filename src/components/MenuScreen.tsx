@@ -55,7 +55,7 @@ export const MenuScreen = ({ progress, onPlay, onUpgrades, onAdPoints }: Props) 
           </View>
 
           <Text style={styles.loadout}>
-            CANNON LV {progress.cannon}  ·  {missile.name} LV {progress.missiles[progress.equipped].level}
+            ARMOR LV {progress.armor}  ·  CANNON LV {progress.cannon}  ·  {missile.name} LV {progress.missiles[progress.equipped].level}
           </Text>
         </Panel>
       </View>

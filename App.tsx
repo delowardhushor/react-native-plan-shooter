@@ -3,8 +3,9 @@ import { StatusBar, StyleSheet, View } from 'react-native';
 import { GameCanvas } from './src/components/GameCanvas';
 import { MenuScreen } from './src/components/MenuScreen';
 import { UpgradeScreen, type UpgradeActions } from './src/components/UpgradeScreen';
-import { AdOverlay } from './src/components/AdOverlay';
+import { initAds } from './src/services/Ads';
 import type { Loadout } from './src/engine/GameLoop';
+import { MAX_ARMOR_LEVEL, armorMaxHp, armorUpgradeCost } from './src/engine/Armor';
 import {
   MAX_CANNON_LEVEL, MAX_MISSILE_LEVEL, MISSILES, cannonUpgradeCost, missileUpgradeCost, type MissileType,
 } from './src/engine/Weapons';
@@ -19,6 +20,7 @@ interface Run {
 }
 
 const loadoutOf = (p: Progress): Loadout => ({
+  maxHp: armorMaxHp(p.armor),
   cannon: p.cannon,
   missile: p.equipped,
   missileLevel: p.missiles[p.equipped].level,
@@ -31,6 +33,7 @@ const App = () => {
 
   useEffect(() => {
     loadProgress().then(setProgress);
+    initAds();
   }, []);
 
   const update = useCallback((fn: (p: Progress) => Progress) => {
@@ -50,6 +53,12 @@ const App = () => {
 
   const actions: UpgradeActions = {
     addPoints: points => update(p => ({ ...p, points: p.points + points })),
+    upgradeArmor: () =>
+      update(p => {
+        const cost = armorUpgradeCost(p.armor);
+        if (p.armor >= MAX_ARMOR_LEVEL || p.points < cost) return p;
+        return { ...p, points: p.points - cost, armor: p.armor + 1 };
+      }),
     upgradeCannon: () =>
       update(p => {
         const cost = cannonUpgradeCost(p.cannon);
@@ -118,7 +127,6 @@ const App = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       {content}
-      <AdOverlay />
     </View>
   );
 };
