@@ -22,7 +22,7 @@ export const AD_UNIT_IDS: Record<AdPlacement, string> = {
   ...(__DEV__ ? {} : LIVE_UNIT_IDS),
 };
 
-export const REWARD_AD_POINTS = 50;
+export const REWARD_AD_POINTS = 25;
 
 const LOAD_TIMEOUT_MS = 15000;
 

@@ -748,12 +748,12 @@ const fireCannon = (s: GameState, onSound: SoundFn) => {
   if (shots === 1) {
     shoot(0, 0);
   } else if (shots === 2) {
-    shoot(-5, 0);
-    shoot(5, 0);
+    shoot(-7, 0);
+    shoot(7, 0);
   } else {
     shoot(0, 0);
-    shoot(-3, -1.3);
-    shoot(3, 1.3);
+    shoot(-3, -2.4);
+    shoot(3, 2.4);
   }
   s.lastFiredFrame = s.frameCount;
   plane.muzzle = 3;

@@ -51,4 +51,4 @@ export const saveProgress = (progress: Progress) => {
 
 // Points earned for finishing a run, win or lose
 export const computeReward = (won: boolean, score: number, level: number) =>
-  Math.floor(score / 4) + (won ? 25 + level * 5 : 0);
+  Math.floor(score / 10) + (won ? 10 + level * 2 : 0);
