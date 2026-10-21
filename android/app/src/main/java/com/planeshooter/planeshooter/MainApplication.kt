@@ -1,4 +1,4 @@
-package com.bitbytetect.planeshooter
+package com.planeshooter.planeshooter
 
 import android.app.Application
 import com.facebook.react.PackageList
