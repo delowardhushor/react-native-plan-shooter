@@ -1,0 +1,117 @@
+<en-US>
+Welcome aboard, pilot! Plane Shooter is here:
+• Fast arcade shooting in landscape with simple touch controls
+• Many enemy planes: snipers, rushers, bombers and more
+• A giant boss every third level
+• Upgrade your armor and cannon
+• Unlock homing missiles, explosive blasts and a piercing lance
+• Play offline, free to play
+</en-US>
+<ar>
+أهلاً بك أيها الطيار! وصلت لعبة Plane Shooter:
+• إطلاق نار سريع بأسلوب الأركيد بالوضع الأفقي وبعناصر تحكم لمس بسيطة
+• طائرات عدو متنوعة: قناصة ومهاجمون انتحاريون وقاذفات قنابل وغيرها
+• زعيم عملاق كل ثلاث مراحل
+• طوّر درعك ومدفعك
+• افتح الصواريخ الموجّهة والانفجارات والرمح الخارق
+• العب دون اتصال، واللعبة مجانية
+</ar>
+<bn-BD>
+স্বাগতম, পাইলট! Plane Shooter এসে গেছে:
+• ল্যান্ডস্কেপ মোডে সহজ টাচ কন্ট্রোলসহ দ্রুতগতির আর্কেড শুটিং
+• নানা ধরনের শত্রু বিমান: স্নাইপার, রাশার, বোমারু বিমান এবং আরও অনেক কিছু
+• প্রতি তৃতীয় লেভেলে একটি বিশাল বস
+• আপনার বর্ম ও কামান আপগ্রেড করুন
+• হোমিং মিসাইল, বিস্ফোরক ব্লাস্ট ও ভেদকারী বর্শা আনলক করুন
+• অফলাইনে খেলুন, বিনামূল্যে
+</bn-BD>
+<de-DE>
+Willkommen an Bord, Pilot! Plane Shooter ist da:
+• Schneller Arcade-Shooter im Querformat mit einfacher Touch-Steuerung
+• Viele gegnerische Flugzeuge: Scharfschützen, Rammer, Bomber und mehr
+• Alle drei Level ein Riesenboss
+• Rüste Panzerung und Kanone auf
+• Schalte Lenkraketen, Explosionen und eine durchschlagende Lanze frei
+• Offline spielbar und kostenlos
+</de-DE>
+<es-ES>
+¡Bienvenido a bordo, piloto! Ya está aquí Plane Shooter:
+• Disparos arcade rápidos en horizontal con controles táctiles sencillos
+• Muchos aviones enemigos: francotiradores, kamikazes, bombarderos y más
+• Un jefe gigante cada tres niveles
+• Mejora tu armadura y tu cañón
+• Desbloquea misiles teledirigidos, explosiones y una lanza perforante
+• Juega sin conexión, es gratis
+</es-ES>
+<fr-FR>
+Bienvenue à bord, pilote ! Plane Shooter est arrivé :
+• Shooter d'arcade rapide en mode paysage avec des commandes tactiles simples
+• De nombreux avions ennemis : tireurs d'élite, kamikazes, bombardiers et plus encore
+• Un boss géant tous les trois niveaux
+• Améliorez votre blindage et votre canon
+• Débloquez missiles à tête chercheuse, explosions et lance perforante
+• Jouez hors ligne, c'est gratuit
+</fr-FR>
+<hi-IN>
+स्वागत है, पायलट! Plane Shooter आ गया है:
+• लैंडस्केप मोड में आसान टच कंट्रोल के साथ तेज़ आर्केड शूटिंग
+• कई तरह के दुश्मन विमान: स्नाइपर, रशर, बॉम्बर और भी बहुत कुछ
+• हर तीसरे लेवल पर एक विशाल बॉस
+• अपने कवच और तोप को अपग्रेड करें
+• होमिंग मिसाइल, विस्फोटक धमाके और भेदने वाला भाला अनलॉक करें
+• ऑफ़लाइन खेलें, मुफ़्त
+</hi-IN>
+<id>
+Selamat datang, pilot! Plane Shooter hadir:
+• Tembak-menembak arcade cepat dengan tampilan lanskap dan kontrol sentuh sederhana
+• Beragam pesawat musuh: penembak jitu, penyeruduk, pembom, dan lainnya
+• Bos raksasa di setiap tiga level
+• Tingkatkan armor dan meriammu
+• Buka rudal pengejar, ledakan, dan tombak penembus
+• Main offline, gratis
+</id>
+<ja-JP>
+ようこそ、パイロット！Plane Shooter がついに登場：
+• 横画面で遊べるシンプルなタッチ操作のスピーディーなシューティング
+• スナイパー、突撃機、爆撃機など多彩な敵機
+• 3ステージごとに巨大ボスが出現
+• アーマーとキャノンを強化
+• 追尾ミサイル、爆発弾、貫通ランスを解放
+• オフライン対応、基本プレイ無料
+</ja-JP>
+<ko-KR>
+환영합니다, 파일럿! Plane Shooter가 출시되었습니다:
+• 가로 화면과 간단한 터치 조작으로 즐기는 빠른 아케이드 슈팅
+• 저격기, 돌격기, 폭격기 등 다양한 적기
+• 3레벨마다 거대 보스 등장
+• 장갑과 대포 업그레이드
+• 유도 미사일, 폭발탄, 관통 창 해금
+• 오프라인 플레이 가능, 무료
+</ko-KR>
+<pt-BR>
+Bem-vindo a bordo, piloto! Plane Shooter chegou:
+• Tiro arcade rápido em modo paisagem com controles de toque simples
+• Vários aviões inimigos: atiradores, kamikazes, bombardeiros e mais
+• Um chefe gigante a cada três fases
+• Melhore sua blindagem e seu canhão
+• Desbloqueie mísseis teleguiados, explosões e uma lança perfurante
+• Jogue offline, é grátis
+</pt-BR>
+<ru-RU>
+Добро пожаловать на борт, пилот! Plane Shooter уже здесь:
+• Динамичный аркадный шутер в горизонтальной ориентации с простым сенсорным управлением
+• Множество вражеских самолётов: снайперы, таранщики, бомбардировщики и другие
+• Огромный босс каждые три уровня
+• Улучшайте броню и пушку
+• Открывайте самонаводящиеся ракеты, взрывные снаряды и пробивающее копьё
+• Играйте офлайн, бесплатно
+</ru-RU>
+<tr-TR>
+Aramıza hoş geldin, pilot! Plane Shooter yayında:
+• Yatay ekranda basit dokunmatik kontrollerle hızlı arcade nişancı oyunu
+• Çok sayıda düşman uçağı: keskin nişancılar, çarpıcılar, bombardıman uçakları ve daha fazlası
+• Her üç seviyede bir dev patron
+• Zırhını ve topunu geliştir
+• Güdümlü füzelerin, patlayıcı atışların ve delici mızrağın kilidini aç
+• Çevrimdışı oyna, ücretsiz
+</tr-TR>
