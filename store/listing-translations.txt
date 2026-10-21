@@ -1,0 +1,276 @@
+PLANE SHOOTER - STORE LISTING TRANSLATIONS
+Each section starts with a language code line (=== code ===) followed by TITLE, SHORT DESCRIPTION and FULL DESCRIPTION.
+Limits: title 30 characters, short description 80, full description 4000.
+
+=== en-US ===
+TITLE:
+Plane Shooter
+
+SHORT DESCRIPTION:
+Blast enemy planes, beat giant bosses and upgrade your fighter jet.
+
+FULL DESCRIPTION:
+Take to the skies in Plane Shooter, a fast arcade shooter played in landscape. Dodge enemy fire, blast waves of enemy planes and take down giant bosses.
+
+FEATURES
+• Simple touch controls built for landscape play
+• New enemy planes appear as you progress: snipers, rushers, bombers and more
+• A giant boss every third level, each with its own deadly weapon
+• Upgrade your armor and cannon between missions
+• Unlock special weapons: homing missiles, explosive blasts and a piercing lance
+• Play offline, no internet connection needed to fly
+• Free to play, with optional rewarded ads for bonus points
+
+Ready for takeoff, pilot?
+
+=== es-ES ===
+TITLE:
+Plane Shooter
+
+SHORT DESCRIPTION:
+Destruye aviones enemigos, vence a jefes gigantes y mejora tu caza.
+
+FULL DESCRIPTION:
+Surca los cielos en Plane Shooter, un rápido juego de disparos arcade en horizontal. Esquiva el fuego enemigo, derriba oleadas de aviones y acaba con jefes gigantes.
+
+CARACTERÍSTICAS
+• Controles táctiles sencillos pensados para jugar en horizontal
+• Nuevos aviones enemigos según avanzas: francotiradores, kamikazes, bombarderos y más
+• Un jefe gigante cada tres niveles, cada uno con su propia arma mortal
+• Mejora tu armadura y tu cañón entre misiones
+• Desbloquea armas especiales: misiles teledirigidos, explosiones y una lanza perforante
+• Juega sin conexión, no necesitas internet para volar
+• Gratis, con anuncios opcionales con recompensa para ganar puntos extra
+
+¿Listo para despegar, piloto?
+
+=== pt-BR ===
+TITLE:
+Plane Shooter
+
+SHORT DESCRIPTION:
+Destrua aviões inimigos, vença chefes gigantes e melhore seu caça.
+
+FULL DESCRIPTION:
+Voe nos céus em Plane Shooter, um jogo de tiro arcade rápido em modo paisagem. Desvie dos tiros inimigos, derrube ondas de aviões e acabe com chefes gigantes.
+
+RECURSOS
+• Controles de toque simples feitos para jogar na horizontal
+• Novos aviões inimigos conforme você avança: atiradores, kamikazes, bombardeiros e mais
+• Um chefe gigante a cada três fases, cada um com sua própria arma mortal
+• Melhore sua armadura e seu canhão entre as missões
+• Desbloqueie armas especiais: mísseis teleguiados, explosões e uma lança perfurante
+• Jogue offline, sem precisar de internet para voar
+• Grátis, com anúncios premiados opcionais para ganhar pontos extras
+
+Pronto para decolar, piloto?
+
+=== fr-FR ===
+TITLE:
+Plane Shooter
+
+SHORT DESCRIPTION:
+Abattez des avions ennemis, battez des boss géants et améliorez votre chasseur.
+
+FULL DESCRIPTION:
+Prenez les airs dans Plane Shooter, un shooter d'arcade rapide en mode paysage. Esquivez les tirs ennemis, abattez des vagues d'avions et terrassez des boss géants.
+
+CARACTÉRISTIQUES
+• Des commandes tactiles simples, conçues pour jouer en mode paysage
+• De nouveaux avions ennemis au fil de la progression : tireurs d'élite, kamikazes, bombardiers et plus encore
+• Un boss géant tous les trois niveaux, chacun avec sa propre arme mortelle
+• Améliorez votre blindage et votre canon entre les missions
+• Débloquez des armes spéciales : missiles à tête chercheuse, explosions et lance perforante
+• Jouez hors ligne, aucune connexion Internet n'est nécessaire pour voler
+• Gratuit, avec des publicités avec récompense facultatives pour gagner des points bonus
+
+Prêt au décollage, pilote ?
+
+=== de-DE ===
+TITLE:
+Plane Shooter
+
+SHORT DESCRIPTION:
+Schieße feindliche Flugzeuge ab, besiege Riesenbosse und rüste deinen Jet auf.
+
+FULL DESCRIPTION:
+Erobere den Himmel in Plane Shooter, einem schnellen Arcade-Shooter im Querformat. Weiche feindlichem Feuer aus, schieße Wellen von Flugzeugen ab und besiege riesige Bossgegner.
+
+FEATURES
+• Einfache Touch-Steuerung für das Spielen im Querformat
+• Neue gegnerische Flugzeuge im Spielverlauf: Scharfschützen, Rammer, Bomber und mehr
+• Alle drei Level ein Riesenboss mit eigener tödlicher Waffe
+• Verbessere zwischen den Missionen deine Panzerung und deine Kanone
+• Schalte Spezialwaffen frei: Lenkraketen, Explosionen und eine durchschlagende Lanze
+• Offline spielbar, zum Fliegen ist keine Internetverbindung nötig
+• Kostenlos, mit optionaler Werbung mit Belohnung für Bonuspunkte
+
+Bereit zum Abheben, Pilot?
+
+=== ru-RU ===
+TITLE:
+Plane Shooter
+
+SHORT DESCRIPTION:
+Сбивайте вражеские самолёты, побеждайте огромных боссов и улучшайте истребитель.
+
+FULL DESCRIPTION:
+Взмойте в небо в Plane Shooter — динамичном аркадном шутере в горизонтальной ориентации. Уворачивайтесь от вражеского огня, сбивайте волны самолётов и побеждайте огромных боссов.
+
+ОСОБЕННОСТИ
+• Простое сенсорное управление для игры в горизонтальной ориентации
+• По мере прохождения появляются новые вражеские самолёты: снайперы, таранщики, бомбардировщики и другие
+• Огромный босс каждые три уровня, и у каждого своё смертоносное оружие
+• Улучшайте броню и пушку между миссиями
+• Открывайте особое оружие: самонаводящиеся ракеты, взрывные снаряды и пробивающее копьё
+• Играйте офлайн — для полёта не нужен интернет
+• Бесплатно, с необязательной рекламой за награду, дающей бонусные очки
+
+Готовы к взлёту, пилот?
+
+=== id ===
+TITLE:
+Plane Shooter
+
+SHORT DESCRIPTION:
+Tembak pesawat musuh, kalahkan bos raksasa, dan tingkatkan jet tempurmu.
+
+FULL DESCRIPTION:
+Terbanglah di langit bersama Plane Shooter, game tembak-menembak arcade yang cepat dengan tampilan lanskap. Hindari tembakan musuh, hancurkan gelombang pesawat, dan kalahkan bos raksasa.
+
+FITUR
+• Kontrol sentuh sederhana yang dibuat untuk mode lanskap
+• Pesawat musuh baru muncul seiring kemajuanmu: penembak jitu, penyeruduk, pembom, dan lainnya
+• Bos raksasa di setiap tiga level, masing-masing dengan senjata mematikan sendiri
+• Tingkatkan armor dan meriammu di antara misi
+• Buka senjata khusus: rudal pengejar, ledakan, dan tombak penembus
+• Main offline, tidak perlu internet untuk terbang
+• Gratis, dengan iklan hadiah opsional untuk mendapatkan poin bonus
+
+Siap lepas landas, pilot?
+
+=== hi-IN ===
+TITLE:
+Plane Shooter
+
+SHORT DESCRIPTION:
+दुश्मन के विमान उड़ाएँ, विशाल बॉस को हराएँ और अपने फाइटर जेट को अपग्रेड करें।
+
+FULL DESCRIPTION:
+Plane Shooter में आसमान पर राज करें, यह लैंडस्केप मोड में खेला जाने वाला तेज़ आर्केड शूटर गेम है। दुश्मन की गोलियों से बचें, विमानों की लहरों को उड़ा दें और विशाल बॉस को हराएँ।
+
+विशेषताएँ
+• लैंडस्केप मोड के लिए बने आसान टच कंट्रोल
+• आगे बढ़ने पर नए दुश्मन विमान आते हैं: स्नाइपर, रशर, बॉम्बर और भी बहुत कुछ
+• हर तीसरे लेवल पर एक विशाल बॉस, जिसके पास अपना घातक हथियार है
+• मिशनों के बीच अपने कवच और तोप को अपग्रेड करें
+• खास हथियार अनलॉक करें: होमिंग मिसाइल, विस्फोटक धमाके और भेदने वाला भाला
+• ऑफ़लाइन खेलें, उड़ान भरने के लिए इंटरनेट की ज़रूरत नहीं
+• मुफ़्त, बोनस पॉइंट के लिए वैकल्पिक रिवॉर्ड विज्ञापनों के साथ
+
+उड़ान भरने के लिए तैयार हैं, पायलट?
+
+=== bn-BD ===
+TITLE:
+Plane Shooter
+
+SHORT DESCRIPTION:
+শত্রুর বিমান ধ্বংস করুন, বিশাল বস হারান এবং আপনার ফাইটার জেট আপগ্রেড করুন।
+
+FULL DESCRIPTION:
+Plane Shooter-এ আকাশে উড়ুন, ল্যান্ডস্কেপ মোডে খেলার মতো একটি দ্রুতগতির আর্কেড শুটার গেম। শত্রুর গুলি এড়িয়ে চলুন, একের পর এক বিমান ধ্বংস করুন এবং বিশাল বসদের হারান।
+
+বৈশিষ্ট্য
+• ল্যান্ডস্কেপ মোডে খেলার জন্য সহজ টাচ কন্ট্রোল
+• এগিয়ে যাওয়ার সাথে নতুন শত্রু বিমান আসে: স্নাইপার, রাশার, বোমারু বিমান এবং আরও অনেক কিছু
+• প্রতি তৃতীয় লেভেলে একটি বিশাল বস, প্রত্যেকের নিজস্ব মারাত্মক অস্ত্র আছে
+• মিশনের মাঝে আপনার বর্ম ও কামান আপগ্রেড করুন
+• বিশেষ অস্ত্র আনলক করুন: হোমিং মিসাইল, বিস্ফোরক ব্লাস্ট এবং ভেদকারী বর্শা
+• অফলাইনে খেলুন, উড়তে ইন্টারনেট লাগে না
+• বিনামূল্যে, বোনাস পয়েন্টের জন্য ঐচ্ছিক রিওয়ার্ড বিজ্ঞাপনসহ
+
+টেকঅফের জন্য প্রস্তুত, পাইলট?
+
+=== ar ===
+TITLE:
+Plane Shooter
+
+SHORT DESCRIPTION:
+دمّر طائرات العدو، واهزم الزعماء العمالقة، وطوّر طائرتك المقاتلة.
+
+FULL DESCRIPTION:
+حلّق في السماء مع Plane Shooter، لعبة إطلاق نار سريعة بأسلوب الأركيد تُلعب بالوضع الأفقي. تفادَ نيران العدو، وأسقِط موجات من الطائرات، واهزم زعماء عمالقة.
+
+المميزات
+• عناصر تحكم لمس بسيطة مصممة للعب بالوضع الأفقي
+• تظهر طائرات عدو جديدة كلما تقدمت: قناصة ومهاجمون انتحاريون وقاذفات قنابل وغيرها
+• زعيم عملاق كل ثلاث مراحل، ولكل زعيم سلاحه الفتاك الخاص
+• طوّر درعك ومدفعك بين المهمات
+• افتح أسلحة خاصة: صواريخ موجّهة وانفجارات ورمح خارق
+• العب دون اتصال، فلا تحتاج إلى الإنترنت للطيران
+• مجانية، مع إعلانات مكافآت اختيارية للحصول على نقاط إضافية
+
+هل أنت جاهز للإقلاع أيها الطيار؟
+
+=== ja-JP ===
+TITLE:
+Plane Shooter
+
+SHORT DESCRIPTION:
+敵機を撃墜し、巨大ボスを倒して、戦闘機を強化しよう。
+
+FULL DESCRIPTION:
+横画面で遊ぶスピーディーなアーケードシューティング「Plane Shooter」で空へ飛び立とう。敵の弾をかわし、敵機の大群を撃ち落とし、巨大ボスを倒せ。
+
+特徴
+• 横画面プレイに最適化されたシンプルなタッチ操作
+• 進むにつれて新しい敵機が登場：スナイパー、突撃機、爆撃機など
+• 3ステージごとに巨大ボスが出現し、それぞれが独自の強力な武器を持つ
+• ミッションの合間にアーマーとキャノンを強化
+• 特殊武器を解放：追尾ミサイル、爆発弾、貫通ランス
+• オフライン対応。飛ぶのにインターネット接続は不要
+• 基本プレイ無料。ボーナスポイントがもらえる任意のリワード広告あり
+
+出撃準備はいいか、パイロット？
+
+=== ko-KR ===
+TITLE:
+Plane Shooter
+
+SHORT DESCRIPTION:
+적기를 격추하고, 거대 보스를 쓰러뜨리고, 전투기를 업그레이드하세요.
+
+FULL DESCRIPTION:
+가로 화면으로 즐기는 빠른 아케이드 슈팅 게임 Plane Shooter로 하늘을 날아보세요. 적의 공격을 피하고, 몰려오는 적기를 격추하고, 거대한 보스를 쓰러뜨리세요.
+
+주요 특징
+• 가로 화면 플레이에 맞춘 간단한 터치 조작
+• 진행할수록 새로운 적기 등장: 저격기, 돌격기, 폭격기 등
+• 3레벨마다 거대 보스 등장, 보스마다 고유한 치명적인 무기 보유
+• 미션 사이에 장갑과 대포 업그레이드
+• 특수 무기 해금: 유도 미사일, 폭발탄, 관통 창
+• 오프라인 플레이 가능, 비행하는 데 인터넷 연결이 필요 없음
+• 무료 플레이, 보너스 포인트를 받을 수 있는 선택형 보상형 광고 제공
+
+이륙 준비 되셨나요, 파일럿?
+
+=== tr-TR ===
+TITLE:
+Plane Shooter
+
+SHORT DESCRIPTION:
+Düşman uçaklarını vur, dev patronları yen ve savaş uçağını geliştir.
+
+FULL DESCRIPTION:
+Yatay ekranda oynanan hızlı bir arcade nişancı oyunu olan Plane Shooter ile gökyüzüne yüksel. Düşman ateşinden kaç, uçak dalgalarını vur ve dev patronları alt et.
+
+ÖZELLİKLER
+• Yatay oyun için tasarlanmış basit dokunmatik kontroller
+• İlerledikçe yeni düşman uçakları çıkar: keskin nişancılar, çarpıcılar, bombardıman uçakları ve daha fazlası
+• Her üç seviyede bir dev patron, her birinin kendine özgü ölümcül silahı var
+• Görevler arasında zırhını ve topunu geliştir
+• Özel silahların kilidini aç: güdümlü füzeler, patlayıcı atışlar ve delici mızrak
+• Çevrimdışı oyna, uçmak için internet bağlantısı gerekmez
+• Ücretsiz, bonus puanlar için isteğe bağlı ödüllü reklamlarla
+
+Kalkışa hazır mısın, pilot?

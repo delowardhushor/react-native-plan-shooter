@@ -19,7 +19,6 @@ export const ENEMY_BULLET_SIZE = { width: 8, height: 8 };
 
 export const ENEMY_SIZE = { width: 44, height: 22 };
 export const ROAMER_SIZE = { width: 64, height: 34 };
-export const BOSS_SIZE = { width: 150, height: 78 };
 
 export const ROAMER_SPEED_X = 0.8; // moves left slowly
 export const ROAMER_SPEED_Y = 1.1; // gentle bobbing
@@ -30,9 +29,14 @@ export const BULLET_SPEED = 10;
 export const ENEMY_STANDARD_HP = 1;
 export const ENEMY_ROAMER_HP = 5;
 
-export const PLAYER_LIVES = 3;
-export const RESPAWN_FRAMES = 60;
-export const INVULNERABLE_FRAMES = 150;
+// Hit points come from the armor upgrade (see Armor.ts); these are the damage rules
+export const ENEMY_CONTACT_DAMAGE = 2;  // ramming a fighter
+export const BOSS_CONTACT_DAMAGE = 3;
+export const HIT_INVULNERABLE_FRAMES = 70;       // grace period after taking a hit
+export const CONTINUE_INVULNERABLE_FRAMES = 180; // grace period after a rewarded-ad continue
+export const MAX_CONTINUES = 1;                  // rewarded continues allowed per run
+
+export const PICKUP_SIZE = { width: 28, height: 28 };
 
 // Particle definitions
 export const PARTICLE_LIFETIME = 30; // Frames before disappearance

@@ -2,6 +2,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Canvas, Group, Picture, type SkPicture } from '@shopify/react-native-skia';
 import { COLOR_ACCENT, COLOR_TEXT } from '../engine/Constants';
+import { MAX_ARMOR_LEVEL, armorMaxHp, armorUpgradeCost, medicHeal } from '../engine/Armor';
 import {
   MAX_CANNON_LEVEL, MAX_MISSILE_LEVEL, MISSILES, MISSILE_TYPES,
   cannonStats, cannonUpgradeCost, missileStats, missileUpgradeCost, type MissileType,
@@ -13,6 +14,7 @@ import { MenuBackdrop } from './MenuBackdrop';
 import { GlassButton, Panel, PointsPill } from './ui';
 
 export interface UpgradeActions {
+  upgradeArmor: () => void;
   upgradeCannon: () => void;
   unlockMissile: (type: MissileType) => void;
   upgradeMissile: (type: MissileType) => void;
@@ -53,6 +55,10 @@ export const UpgradeScreen = ({ progress, actions, onBack }: Props) => {
     if (await showRewardedAd()) actions.addPoints(REWARD_AD_POINTS);
   };
 
+  const hull = armorMaxHp(progress.armor);
+  const armorMax = progress.armor >= MAX_ARMOR_LEVEL;
+  const armorCost = armorUpgradeCost(progress.armor);
+
   const cannon = cannonStats(progress.cannon);
   const cannonMax = progress.cannon >= MAX_CANNON_LEVEL;
   const cannonCost = cannonUpgradeCost(progress.cannon);
@@ -72,6 +78,29 @@ export const UpgradeScreen = ({ progress, actions, onBack }: Props) => {
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cards}>
+        <Panel style={styles.card}>
+          <Icon picture={S.medic} width={28} height={28} scale={1.8} />
+          <Text style={styles.name}>ARMOR</Text>
+          <Pips level={progress.armor} max={MAX_ARMOR_LEVEL} />
+          <Text style={styles.stat}>Hit points before your plane goes down</Text>
+          <Text style={styles.statDim}>
+            HULL {hull}{armorMax ? '' : ` → ${armorMaxHp(progress.armor + 1)}`}  ·  MEDIC +{medicHeal(hull)}
+          </Text>
+          <View style={styles.spacer} />
+          {armorMax ? (
+            <GlassButton label="MAX LEVEL" small disabled onPress={() => {}} />
+          ) : (
+            <GlassButton
+              label="UPGRADE"
+              sublabel={`★ ${armorCost}`}
+              small
+              variant="primary"
+              disabled={points < armorCost}
+              onPress={actions.upgradeArmor}
+            />
+          )}
+        </Panel>
+
         <Panel style={styles.card}>
           <Icon picture={S.player} width={56} height={26} scale={1.9} />
           <Text style={styles.name}>CANNON</Text>

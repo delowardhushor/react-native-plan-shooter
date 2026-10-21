@@ -2,9 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { AppState, StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { Canvas, Picture } from '@shopify/react-native-skia';
 import {
-  PLAYER_SPEED, PLAYER_LIVES, COLOR_TEXT, COLOR_PANEL, COLOR_PANEL_BORDER, COLOR_ACCENT
+  PLAYER_SPEED, MAX_CONTINUES, COLOR_TEXT, COLOR_PANEL, COLOR_PANEL_BORDER, COLOR_ACCENT
 } from '../engine/Constants';
-import { createInitialState, updateGameState, missileCharge, type GameState, type Loadout } from '../engine/GameLoop';
+import { createInitialState, updateGameState, revivePlayer, missileCharge, type GameState, type Loadout } from '../engine/GameLoop';
 import { MISSILES } from '../engine/Weapons';
 import { renderFrame } from '../render/Renderer';
 import { computeReward } from '../state/Progress';
@@ -45,9 +45,26 @@ export const GameCanvas = (props: Props) => {
   const lastTime = useRef<number>(0);
   const accumulator = useRef<number>(0);
   const finished = useRef<boolean>(false);
+  const continuesUsed = useRef<number>(0);
+  const offered = useRef<boolean>(false);
+  const adBusy = useRef<boolean>(false);
+  const [adMessage, setAdMessage] = useState('');
+  const [adLoading, setAdLoading] = useState(false);
 
   const [result, setResult] = useState<Result | null>(null);
+  const [offerContinue, setOfferContinue] = useState(false);
   const [, setTick] = useState(0);
+
+  const finishRun = () => {
+    if (finished.current) return;
+    finished.current = true;
+    const s = gameState.current;
+    const won = s.status === 'won';
+    const reward = computeReward(won, s.score, s.level);
+    setOfferContinue(false);
+    setResult({ won, reward, doubled: false });
+    propsRef.current.onFinish(won, reward);
+  };
 
   const animate = () => {
     const now = Date.now();
@@ -65,12 +82,13 @@ export const GameCanvas = (props: Props) => {
       if (steps === MAX_STEPS_PER_FRAME) accumulator.current = 0;
 
       const s = gameState.current;
-      if (s.status !== 'playing' && s.endTimer > RESULT_DELAY_FRAMES && !finished.current) {
-        finished.current = true;
-        const won = s.status === 'won';
-        const reward = computeReward(won, s.score, s.level);
-        setResult({ won, reward, doubled: false });
-        propsRef.current.onFinish(won, reward);
+      if (s.status !== 'playing' && s.endTimer > RESULT_DELAY_FRAMES && !finished.current && !offered.current) {
+        if (s.status === 'lost' && continuesUsed.current < MAX_CONTINUES) {
+          offered.current = true;
+          setOfferContinue(true);
+        } else {
+          finishRun();
+        }
       }
       // Skip redundant renders on high-refresh screens when nothing advanced
       if (steps > 0) setTick(t => t + 1);
@@ -118,9 +136,27 @@ export const GameCanvas = (props: Props) => {
     setTick(t => t + 1);
   };
 
+  const continueWithAd = async () => {
+    if (adBusy.current) return;
+    adBusy.current = true;
+    setAdLoading(true);
+    setAdMessage('');
+    const rewarded = await showRewardedAd('continue');
+    adBusy.current = false;
+    setAdLoading(false);
+    if (!rewarded) {
+      setAdMessage('Ad unavailable or closed early. Watch the full ad to continue.');
+      return;
+    }
+    continuesUsed.current += 1;
+    offered.current = false;
+    setOfferContinue(false);
+    revivePlayer(gameState.current);
+  };
+
   const doubleReward = async () => {
     if (!result || result.doubled) return;
-    const rewarded = await showRewardedAd();
+    const rewarded = await showRewardedAd('doubleReward');
     if (rewarded) {
       propsRef.current.onBonusPoints(result.reward);
       setResult(r => (r ? { ...r, reward: r.reward * 2, doubled: true } : r));
@@ -140,6 +176,10 @@ export const GameCanvas = (props: Props) => {
     : cfg.isBoss && s.bossState > 0 ? 1 : Math.min(1, s.kills / cfg.killTarget);
   const progressText = bossFight ? '' : `${Math.min(s.kills, cfg.killTarget)}/${cfg.killTarget}`;
 
+  const hullRatio = s.hp / s.maxHp;
+  const hullColor = hullRatio > 0.5 ? '#4cd97b' : hullRatio > 0.25 ? '#ffb23e' : '#ff4d5a';
+  const hullBorder = s.heal > 0 ? '#7dffb0' : s.hurt > 0 ? '#ff6a5e' : COLOR_PANEL_BORDER;
+
   const bannerOpacity = s.bannerTimer > 0 && s.status === 'playing' ? Math.min(1, s.bannerTimer / 30) : 0;
 
   return (
@@ -154,11 +194,14 @@ export const GameCanvas = (props: Props) => {
             <Text style={styles.label}>SCORE</Text>
             <Text style={styles.value}>{s.score}</Text>
           </View>
-          <View style={styles.panel}>
-            <Text style={styles.label}>LIVES</Text>
-            <View style={styles.hearts}>
-              {Array.from({ length: PLAYER_LIVES }).map((_, i) => (
-                <Text key={i} style={[styles.heart, i >= s.lives && styles.heartLost]}>♥</Text>
+          <View style={[styles.panel, styles.hullPanel, { borderColor: hullBorder }]}>
+            <View style={styles.progressHead}>
+              <Text style={styles.label}>HULL</Text>
+              <Text style={styles.progressText}>{s.hp}/{s.maxHp}</Text>
+            </View>
+            <View style={styles.segments}>
+              {Array.from({ length: s.maxHp }).map((_, i) => (
+                <View key={i} style={[styles.segment, i < s.hp && { backgroundColor: hullColor }]} />
               ))}
             </View>
           </View>
@@ -222,6 +265,27 @@ export const GameCanvas = (props: Props) => {
             <View style={styles.buttons}>
               <GlassButton label="RESUME" variant="primary" onPress={togglePause} />
               <GlassButton label="QUIT TO MENU" onPress={props.onMenu} />
+            </View>
+          </Panel>
+        </View>
+      )}
+
+      {offerContinue && (
+        <View style={[styles.overlayLayer, styles.dim]}>
+          <Panel style={styles.card}>
+            <Text style={[styles.title, styles.loseTitle]}>SHOT DOWN</Text>
+            <Text style={styles.stats}>LEVEL {s.level}  ·  SCORE {s.score}  ·  KILLS {s.kills}</Text>
+            <Text style={styles.hint}>Watch a short ad to rejoin the fight with a fully repaired hull.</Text>
+            {!!adMessage && <Text style={styles.adMessage}>{adMessage}</Text>}
+            <View style={styles.buttons}>
+              <GlassButton
+                label={adLoading ? 'LOADING AD…' : 'CONTINUE'}
+                sublabel="WATCH AD  ·  FULL HULL"
+                variant="ad"
+                disabled={adLoading}
+                onPress={continueWithAd}
+              />
+              <GlassButton label="NO THANKS" onPress={finishRun} />
             </View>
           </Panel>
         </View>
@@ -310,21 +374,20 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
-  hearts: {
+  hullPanel: {
+    width: 150,
+    justifyContent: 'center',
+  },
+  segments: {
     flexDirection: 'row',
-    gap: 4,
-    marginTop: 2,
+    gap: 2,
+    marginTop: 6,
   },
-  heart: {
-    color: '#ff4d5a',
-    fontSize: 22,
-    fontWeight: '900',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  heartLost: {
-    color: 'rgba(255,255,255,0.2)',
+  segment: {
+    flex: 1,
+    height: 10,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.18)',
   },
   progressWrap: {
     width: 220,
@@ -446,6 +509,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 2,
+    marginTop: 8,
+  },
+  hint: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginTop: 12,
+  },
+  adMessage: {
+    color: '#ff9a8f',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
     marginTop: 8,
   },
   rewardRow: {

@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, PanResponder } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { StyleSheet, View, Text, type GestureResponderEvent } from 'react-native';
 import { COLOR_TEXT, COLOR_PANEL_BORDER } from '../engine/Constants';
 
 interface ControlsOverlayProps {
@@ -10,110 +10,131 @@ interface ControlsOverlayProps {
   missileColor: string;
 }
 
+const MAX_DIST = 45;
+
+// Raw touch events (not PanResponder/Touchable) are used on purpose: React Native's responder system
+// grants only ONE active responder, so a held movement finger would block the missile button.
+// Raw events are delivered per-finger, so steering and firing work at the same time.
 export const ControlsOverlay: React.FC<ControlsOverlayProps> = ({
   onDirectionChange, onMissileFire, missileCharge, missileLabel, missileColor,
 }) => {
+  const moveId = useRef<string | null>(null);
   const centerRef = useRef({ x: 0, y: 0 });
   const stopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [firing, setFiring] = useState(false);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt, gestureState) => {
-        centerRef.current = { x: gestureState.x0, y: gestureState.y0 };
-      },
-      onPanResponderMove: (evt, gestureState) => {
-        const currentX = gestureState.moveX;
-        const currentY = gestureState.moveY;
-        
-        let diffX = currentX - centerRef.current.x;
-        let diffY = currentY - centerRef.current.y;
-        
-        const maxDist = 45; 
-        const dist = Math.sqrt(diffX * diffX + diffY * diffY);
-        
-        // Floating joystick: if dragging beyond the max radius, pull the center point along
-        if (dist > maxDist) {
-          const ratio = maxDist / dist;
-          centerRef.current.x = currentX - diffX * ratio;
-          centerRef.current.y = currentY - diffY * ratio;
-          
-          diffX = currentX - centerRef.current.x;
-          diffY = currentY - centerRef.current.y;
-        }
-        
-        // Generate smooth analog signals between -1.0 and 1.0 (true 360-degree control)
-        let dx = diffX / maxDist;
-        let dy = diffY / maxDist;
-        
-        // Small deadzone to make it easy to fully stop without lifting your finger
-        if (Math.abs(dx) < 0.15) dx = 0;
-        if (Math.abs(dy) < 0.15) dy = 0;
-        
-        // Cancel the previous stop instruction if finger is still moving
-        if (stopTimer.current) clearTimeout(stopTimer.current);
-        
-        onDirectionChange(dx, dy);
-        
-        // If the finger stops moving for 100ms, automatically stop the plane 
-        // and reset the joystick center point to exactly under the finger.
-        stopTimer.current = setTimeout(() => {
-          centerRef.current = { x: currentX, y: currentY };
-          onDirectionChange(0, 0);
-        }, 100);
-      },
-      onPanResponderRelease: () => {
-        if (stopTimer.current) clearTimeout(stopTimer.current);
-        onDirectionChange(0, 0);
-      },
-      onPanResponderTerminate: () => {
-        if (stopTimer.current) clearTimeout(stopTimer.current);
-        onDirectionChange(0, 0);
-      }
-    })
-  ).current;
+  const clearStop = () => {
+    if (stopTimer.current) clearTimeout(stopTimer.current);
+    stopTimer.current = null;
+  };
+
+  const endMove = () => {
+    moveId.current = null;
+    clearStop();
+    onDirectionChange(0, 0);
+  };
+
+  const dragTo = (currentX: number, currentY: number) => {
+    let diffX = currentX - centerRef.current.x;
+    let diffY = currentY - centerRef.current.y;
+    const dist = Math.sqrt(diffX * diffX + diffY * diffY);
+
+    // Floating joystick: if dragging beyond the max radius, pull the center point along
+    if (dist > MAX_DIST) {
+      const ratio = MAX_DIST / dist;
+      centerRef.current.x = currentX - diffX * ratio;
+      centerRef.current.y = currentY - diffY * ratio;
+      diffX = currentX - centerRef.current.x;
+      diffY = currentY - centerRef.current.y;
+    }
+
+    // Smooth analog signals between -1.0 and 1.0 (true 360-degree control)
+    let dx = diffX / MAX_DIST;
+    let dy = diffY / MAX_DIST;
+
+    // Small deadzone to make it easy to fully stop without lifting your finger
+    if (Math.abs(dx) < 0.15) dx = 0;
+    if (Math.abs(dy) < 0.15) dy = 0;
+
+    onDirectionChange(dx, dy);
+
+    // If the finger stops moving for 100ms, stop the plane and re-center the joystick under the finger
+    clearStop();
+    stopTimer.current = setTimeout(() => {
+      centerRef.current = { x: currentX, y: currentY };
+      onDirectionChange(0, 0);
+    }, 100);
+  };
+
+  const onSurfaceStart = (e: GestureResponderEvent) => {
+    if (moveId.current !== null) return;
+    const t = e.nativeEvent.changedTouches[0];
+    moveId.current = String(t.identifier);
+    centerRef.current = { x: t.pageX, y: t.pageY };
+  };
+
+  const onSurfaceMove = (e: GestureResponderEvent) => {
+    const t = Array.from(e.nativeEvent.changedTouches).find(ct => String(ct.identifier) === moveId.current);
+    if (t) dragTo(t.pageX, t.pageY);
+  };
+
+  const onSurfaceEnd = (e: GestureResponderEvent) => {
+    if (Array.from(e.nativeEvent.changedTouches).some(ct => String(ct.identifier) === moveId.current)) endMove();
+  };
+
+  const ready = missileCharge >= 1;
 
   return (
     <View style={styles.container} pointerEvents="box-none">
-      
-      {/* PanResponder maps swiping gestures across the entire left half of the screen */}
-      <View style={styles.leftHalf} {...panResponder.panHandlers} />
-      
-      <View style={styles.rightHalf} pointerEvents="box-none">
-        <TouchableOpacity
-          onPress={onMissileFire}
-          style={[styles.missileBtn, { borderColor: missileCharge >= 1 ? missileColor : COLOR_PANEL_BORDER, shadowColor: missileColor }]}
-          activeOpacity={0.6}
+      {/* The whole screen steers the plane, left or right side alike */}
+      <View
+        style={StyleSheet.absoluteFill}
+        onTouchStart={onSurfaceStart}
+        onTouchMove={onSurfaceMove}
+        onTouchEnd={onSurfaceEnd}
+        onTouchCancel={onSurfaceEnd}
+      />
+
+      {/* Sibling of the surface, so its touches never start a movement drag */}
+      <View
+        style={styles.fireZone}
+        onTouchStart={() => { setFiring(true); onMissileFire(); }}
+        onTouchEnd={() => setFiring(false)}
+        onTouchCancel={() => setFiring(false)}
+      >
+        <View
+          style={[
+            styles.missileBtn,
+            { borderColor: ready || firing ? missileColor : COLOR_PANEL_BORDER, shadowColor: missileColor },
+            firing && styles.missilePressed,
+          ]}
+          pointerEvents="none"
         >
           {/* Dark cover shrinks as the missile reloads */}
           <View style={[styles.cooldown, { height: `${(1 - missileCharge) * 100}%` }]} />
           <Text style={styles.btnText}>{missileLabel}</Text>
-          <Text style={styles.btnSub}>{missileCharge >= 1 ? 'READY' : 'RELOAD'}</Text>
-        </TouchableOpacity>
+          <Text style={styles.btnSub}>{ready ? 'READY' : 'RELOAD'}</Text>
+        </View>
       </View>
-
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFill, 
-    flexDirection: 'row',
+    ...StyleSheet.absoluteFill,
     zIndex: 10,
     elevation: 10,
   },
-  leftHalf: {
-    flex: 1, 
-    backgroundColor: 'transparent',
+  // Padded beyond the visible button so a thumb that lands near it still fires
+  fireZone: {
+    position: 'absolute',
+    right: 14,
+    bottom: 14,
+    padding: 16,
   },
-  rightHalf: {
-    flex: 1, 
-    justifyContent: 'flex-end',
-    alignItems: 'flex-end',
-    padding: 30,
-    pointerEvents: 'box-none',
+  missilePressed: {
+    transform: [{ scale: 0.93 }],
   },
   missileBtn: {
     width: 84,

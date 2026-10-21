@@ -4,6 +4,7 @@ import type { MissileType } from '../engine/Weapons';
 export interface Progress {
   level: number;   // the level the player will play next
   points: number;  // upgrade currency
+  armor: number;
   cannon: number;
   missiles: Record<MissileType, { owned: boolean; level: number }>;
   equipped: MissileType;
@@ -14,6 +15,7 @@ const KEY = 'planeshooter.progress.v1';
 export const defaultProgress = (): Progress => ({
   level: 1,
   points: 0,
+  armor: 1,
   cannon: 1,
   missiles: {
     homing: { owned: true, level: 1 },
@@ -49,4 +51,4 @@ export const saveProgress = (progress: Progress) => {
 
 // Points earned for finishing a run, win or lose
 export const computeReward = (won: boolean, score: number, level: number) =>
-  Math.floor(score / 4) + (won ? 25 + level * 5 : 0);
+  Math.floor(score / 10) + (won ? 10 + level * 2 : 0);
