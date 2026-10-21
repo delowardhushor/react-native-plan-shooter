@@ -1,4 +1,4 @@
-package com.bitbytetect.planeshooter
+package com.planeshooter.planeshooter
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
