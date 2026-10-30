@@ -331,6 +331,27 @@ const TITAN_PALETTE: JetPalette = {
   canopy: ['#ffd9c8', '#a8301f'], accent: '#ff3b2a',
 };
 
+// Armoured fighter: pale hull with cyan trim, shown inside an energy shield
+const AEGIS_PALETTE: JetPalette = {
+  bodyTop: '#e8f1f7', bodyMid: '#7f9bb4', bodyLow: '#2a3d52',
+  wingNear: ['#a9c3d8', '#33485f'], wingFar: '#1f3043', fin: '#c4d6e4',
+  canopy: ['#d6f6ff', '#2a8fd0'], accent: '#3ad0ff',
+};
+
+// Swarm drone: tiny lime delta
+const SWARM_PALETTE: JetPalette = {
+  bodyTop: '#e4ff9a', bodyMid: '#8ac82a', bodyLow: '#2f4a0c',
+  wingNear: ['#b6e85a', '#3c5c10'], wingFar: '#25380a', fin: '#a2d63e',
+  canopy: ['#fff2c8', '#c25a1a'], accent: '#ff3b2a',
+};
+
+// Minelayer: dark hull with toxic green warning trim
+const MINER_PALETTE: JetPalette = {
+  bodyTop: '#8fa08c', bodyMid: '#4a5a48', bodyLow: '#1a2219',
+  wingNear: ['#677864', '#212b20'], wingFar: '#121812', fin: '#5f7060',
+  canopy: ['#e8ffd0', '#4aa02a'], accent: '#9aff3a',
+};
+
 // Swept delta wing: small and quick as the rusher, larger with wing pods as the Phantom boss
 const drawDelta = (c: SkCanvas, pal: JetPalette, boss: boolean) => {
   c.drawPath(poly([[30, 9], [14, 0.5], [8, 0.5], [16, 9]]), fillPaint(pal.wingFar));
@@ -509,6 +530,9 @@ export const ENEMY_FRAMES: Record<EnemyType, Frame> = {
   [EnemyType.RUSHER]: DELTA_FRAME,
   [EnemyType.SNIPER]: SNIPER_FRAME,
   [EnemyType.BOMBER]: BOMBER_FRAME,
+  [EnemyType.AEGIS]: JET_FRAME,
+  [EnemyType.SWARM]: DELTA_FRAME,
+  [EnemyType.MINELAYER]: BOMBER_FRAME,
 };
 
 export const ENEMY_GLOWS: Record<EnemyType, Glows> = {
@@ -518,6 +542,9 @@ export const ENEMY_GLOWS: Record<EnemyType, Glows> = {
   [EnemyType.RUSHER]: [[2, 10, 20]],
   [EnemyType.SNIPER]: [[2, 11.6, 18]],
   [EnemyType.BOMBER]: [[3, 19.5, 22], [28, 32, 18]],
+  [EnemyType.AEGIS]: [[2, 13.5, 24]],
+  [EnemyType.SWARM]: [[2, 10, 22]],
+  [EnemyType.MINELAYER]: [[3, 19.5, 20], [28, 32, 16]],
 };
 
 export const BOSS_FRAMES: Frame[] = [GUNSHIP_FRAME, BOMBER_FRAME, DELTA_FRAME, TITAN_FRAME];
@@ -681,6 +708,9 @@ export const getSprites = (): Sprites => {
       [EnemyType.RUSHER]: record(DELTA_FRAME.width, DELTA_FRAME.height, c => drawDelta(c, RUSHER_PALETTE, false)),
       [EnemyType.SNIPER]: record(SNIPER_FRAME.width, SNIPER_FRAME.height, c => drawSniper(c, SNIPER_PALETTE)),
       [EnemyType.BOMBER]: record(BOMBER_FRAME.width, BOMBER_FRAME.height, c => drawBomber(c, BOMBER_PALETTE, false)),
+      [EnemyType.AEGIS]: record(JET_FRAME.width, JET_FRAME.height, c => drawJet(c, AEGIS_PALETTE)),
+      [EnemyType.SWARM]: record(DELTA_FRAME.width, DELTA_FRAME.height, c => drawDelta(c, SWARM_PALETTE, false)),
+      [EnemyType.MINELAYER]: record(BOMBER_FRAME.width, BOMBER_FRAME.height, c => drawBomber(c, MINER_PALETTE, false)),
     },
     bosses: [
       record(GUNSHIP_FRAME.width, GUNSHIP_FRAME.height, c => drawGunship(c, BOSS_PALETTE, true)),

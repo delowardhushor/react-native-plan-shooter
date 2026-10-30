@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { COLOR_ACCENT, COLOR_TEXT, SCREEN_WIDTH } from '../engine/Constants';
-import { BOSS_DEFS, bossKindFor } from '../engine/Enemies';
+import { bossTitle } from '../engine/Enemies';
 import { BOSS_EVERY, isBossLevel } from '../engine/Levels';
 import { biomeAccentFor, biomeNameFor } from '../render/Backdrop';
 import { MAX_STARS, REPLAY_REWARD_FACTOR, equippedSkin, isCleared, starsFor, type Progress } from '../state/Progress';
@@ -31,7 +31,7 @@ const LevelNode = ({ level, progress, accent, onPress }: NodeProps) => {
   const current = level === progress.level;
   const locked = !cleared && !current;
   const stars = starsFor(progress, level);
-  const bossName = boss ? BOSS_DEFS[bossKindFor(level / BOSS_EVERY)].name : '';
+  const bossName = boss ? bossTitle(level / BOSS_EVERY) : '';
   const tone = boss ? '#ff4a3d' : accent;
 
   return (

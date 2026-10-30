@@ -25,6 +25,13 @@ sparkPaint.setBlendMode(BlendMode.Plus);
 const hitPaint = Skia.Paint();
 hitPaint.setColorFilter(Skia.ColorFilter.MakeBlend(Skia.Color('rgba(255,255,255,0.75)'), BlendMode.SrcATop));
 
+// Repeat bosses are recoloured per Mk so a Mk II is recognisable at a glance: violet, gold, then crimson
+const MK_TINTS = ['rgba(150,90,255,0.34)', 'rgba(255,200,60,0.32)', 'rgba(255,60,60,0.34)'].map(col => {
+  const paint = Skia.Paint();
+  paint.setColorFilter(Skia.ColorFilter.MakeBlend(Skia.Color(col), BlendMode.SrcATop));
+  return paint;
+});
+
 const blit = (c: SkCanvas, img: SkImage, cx: number, cy: number, size: number, paint: typeof normalPaint, alpha: number) => {
   paint.setAlphaf(alpha);
   c.drawImageRect(
@@ -56,6 +63,7 @@ interface AircraftOpts {
   frameCount: number;
   S: Sprites;
   muzzle?: boolean;
+  tint?: typeof hitPaint; // optional colour wash over the whole sprite
 }
 
 const drawAircraft = (c: SkCanvas, o: AircraftOpts) => {
@@ -71,9 +79,10 @@ const drawAircraft = (c: SkCanvas, o: AircraftOpts) => {
   const flicker = 0.82 + 0.18 * Math.sin(o.frameCount * 1.9);
   o.glows.forEach(([gx, gy, size]) => blit(c, o.S.engineGlow, gx, gy, size * flicker, additivePaint, 0.95));
 
-  if (o.hit) c.saveLayer(hitPaint);
+  const layer = o.hit ? hitPaint : o.tint;
+  if (layer) c.saveLayer(layer);
   c.drawPicture(o.pic);
-  if (o.hit) c.restore();
+  if (layer) c.restore();
 
   if (o.muzzle) blit(c, o.S.flash, o.frame.width + 3, o.frame.height / 2 + 1, 18, additivePaint, 1);
   c.restore();
@@ -141,6 +150,14 @@ const drawEnemy = (c: SkCanvas, S: Sprites, e: Enemy, frameCount: number) => {
   });
 
   const noseY = e.y + e.height / 2;
+  if (e.type === EnemyType.AEGIS && e.mode === 0) {
+    // Energy shield bubble over the nose
+    const pulse = 0.5 + 0.5 * Math.sin(frameCount * 0.2 + e.age * 0.05);
+    blit(c, S.engineGlowCyan, e.x + e.width * 0.25, noseY, e.height * 2.5 + 3 * pulse, additivePaint, 0.45 + 0.2 * pulse);
+    ringPaint.setAlphaf(0.35 + 0.25 * pulse);
+    ringPaint.setStrokeWidth(1);
+    c.drawOval({ x: e.x - 6, y: e.y - 5, width: e.width * 0.7, height: e.height + 10 }, ringPaint);
+  }
   if (e.type === EnemyType.RUSHER && e.mode === 1) {
     // Lock-on: a thin line down the dash path plus a pulsing nose light
     const pulse = 0.5 + 0.5 * Math.sin(frameCount * 0.9);
@@ -159,6 +176,7 @@ const drawBoss = (c: SkCanvas, S: Sprites, b: Boss, frameCount: number) => {
     pic: S.bosses[b.kind], frame: BOSS_FRAMES[b.kind], x: b.x, y: b.y, w: b.width, h: b.height,
     flip: true, tilt: b.dying > 0 ? 6 : b.vy * 1.5, hit: b.hitFlash > 0,
     glows: BOSS_GLOWS[b.kind], frameCount, S,
+    tint: b.tier > 0 ? MK_TINTS[Math.min(b.tier, MK_TINTS.length) - 1] : undefined,
   });
   if (b.dying === 0) {
     // Pulsing red core + warning light, hotter in phase 2

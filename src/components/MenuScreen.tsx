@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { COLOR_ACCENT, COLOR_TEXT } from '../engine/Constants';
-import { BOSS_DEFS, bossKindFor } from '../engine/Enemies';
+import { bossTitle } from '../engine/Enemies';
 import { BOSS_EVERY, getLevelConfig, isBossLevel } from '../engine/Levels';
 import { MAX_ARMOR_LEVEL, armorUpgradeCost } from '../engine/Armor';
 import {
@@ -82,7 +82,6 @@ export const MenuScreen = ({ progress, onPlay, onUpgrades, onSkins, onCampaign, 
   const showDaily = daily.claimable && dailyDismissedOn !== dayKey(new Date());
 
   const cfg = getLevelConfig(progress.level);
-  const boss = BOSS_DEFS[bossKindFor(cfg.bossIndex)];
   const missile = MISSILES[progress.equipped];
   const canUpgrade = hasAffordableUpgrade(progress);
   const accent = biomeAccentFor(progress.level);
@@ -146,7 +145,7 @@ export const MenuScreen = ({ progress, onPlay, onUpgrades, onSkins, onCampaign, 
           </TouchableOpacity>
           {cfg.isBoss ? (
             <View style={styles.bossTag}>
-              <Text style={styles.bossTagText}>BOSS · {boss.name}</Text>
+              <Text style={styles.bossTagText}>BOSS · {bossTitle(cfg.bossIndex)}</Text>
             </View>
           ) : (
             <Text style={styles.objective}>DESTROY {cfg.killTarget} ENEMY PLANES</Text>

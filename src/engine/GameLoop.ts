@@ -6,9 +6,9 @@ import {
 } from './Constants';
 import { medicHeal } from './Armor';
 import { PROJECTILES, type ProjectileKind } from './Projectiles';
-import { getLevelConfig, type LevelConfig } from './Levels';
+import { getLevelConfig, newEnemiesAt, type LevelConfig } from './Levels';
 import { cannonStats, missileStats, type MissileType } from './Weapons';
-import { BOSS_DEFS, ENEMY_DEFS, EnemyType, bossKindFor } from './Enemies';
+import { BOSS_DEFS, ENEMY_DEFS, ENEMY_NAMES, EnemyType, bossKindFor, bossTier, bossTitle } from './Enemies';
 
 export { EnemyType };
 
@@ -48,6 +48,7 @@ export interface Enemy extends Box {
 
 export interface Boss extends Box {
   kind: number;     // index into BOSS_DEFS, picks hull, movement and attack pattern
+  tier: number;     // 0 for the first appearance, 1 for Mk II, 2 for Mk III...
   hp: number;
   maxHp: number;
   vy: number;
@@ -209,7 +210,11 @@ export const createInitialState = (level: number, loadout: Loadout): GameState =
     pickupTimer: nextPickupDelay(),
     banner: {
       title: `LEVEL ${level}`,
-      sub: config.isBoss ? 'BOSS BATTLE AHEAD' : `DESTROY ${config.killTarget} ENEMY PLANES`,
+      sub: config.isBoss
+        ? 'BOSS BATTLE AHEAD'
+        : newEnemiesAt(level).length
+          ? `NEW ENEMY: ${newEnemiesAt(level).map(t => ENEMY_NAMES[t]).join(' + ')}`
+          : `DESTROY ${config.killTarget} ENEMY PLANES`,
     },
     bannerTimer: 150,
     score: 0,
@@ -326,8 +331,15 @@ const playerHitbox = (plane: Plane): Box => ({
 
 type Target = Enemy | Boss;
 
+// Mines are slow plasma orbs dropped by the minelayer; boss orbs are much faster
+const MINE_MAX_SPEED = 1.2;
+const MINE_LIFETIME = 600;
+const isMine = (b: EnemyBullet) => b.kind === 'orb' && b.maxSpeed < MINE_MAX_SPEED;
+
 const damageTarget = (t: Target, amount: number) => {
-  t.hp -= amount;
+  // An intact energy shield soaks up part of every hit
+  const shielded = 'type' in t && t.type === EnemyType.AEGIS && t.mode === 0;
+  t.hp -= shielded ? amount * 0.6 : amount;
   t.hitFlash = 4;
 };
 
@@ -420,10 +432,12 @@ const makeEnemy = (s: GameState, type: EnemyType, x: number, y: number): Enemy =
   if (type === EnemyType.ROAMER) targetX = SCREEN_WIDTH * 0.45 + Math.random() * (SCREEN_WIDTH * 0.35);
   if (type === EnemyType.SNIPER) targetX = SCREEN_WIDTH * 0.62 + Math.random() * (SCREEN_WIDTH * 0.2);
   if (type === EnemyType.RUSHER) targetX = SCREEN_WIDTH * 0.62 + Math.random() * (SCREEN_WIDTH * 0.15);
+  if (type === EnemyType.MINELAYER) targetX = SCREEN_WIDTH * 0.68 + Math.random() * (SCREEN_WIDTH * 0.1);
+  const hp = Math.max(1, Math.round(def.hp * s.config.enemyHpMul));
   return {
     type,
-    hp: def.hp,
-    maxHp: def.hp,
+    hp,
+    maxHp: hp,
     vy: type === EnemyType.ROAMER ? ROAMER_SPEED_Y * (Math.random() > 0.5 ? 1 : -1) : 0,
     lastFiredFrame: s.frameCount + Math.floor(rand(0, 50)),
     targetX,
@@ -456,6 +470,18 @@ const spawnEnemy = (s: GameState) => {
   const type = pickEnemyType(s);
   const { height } = ENEMY_DEFS[type].size;
   // Weavers need headroom on both sides of their centre line
+  if (type === EnemyType.SWARM) {
+    // A V of drones that weave in step
+    const count = 4;
+    const centre = rand(110, Math.max(111, GROUND_Y - 110));
+    for (let i = 0; i < count; i++) {
+      const lane = i - (count - 1) / 2;
+      const e = makeEnemy(s, type, SCREEN_WIDTH + Math.abs(lane) * 26, centre + lane * 18);
+      e.baseY = centre + lane * 18;
+      s.enemies.push(e);
+    }
+    return;
+  }
   const margin = type === EnemyType.WAVER ? 50 : 0;
   const y = rand(60 + margin, Math.max(61 + margin, GROUND_Y - height - 6 - margin));
   s.enemies.push(makeEnemy(s, type, SCREEN_WIDTH, y));
@@ -467,6 +493,7 @@ const spawnBoss = (s: GameState) => {
   const hp = Math.round(s.config.bossHp * def.hpMul);
   s.boss = {
     kind,
+    tier: bossTier(s.config.bossIndex),
     x: SCREEN_WIDTH + 10,
     y: Math.min(90, GROUND_Y - def.size.height),
     width: def.size.width,
@@ -610,6 +637,48 @@ const updateEnemy = (s: GameState, e: Enemy, onSound: SoundFn) => {
       break;
     }
 
+    case EnemyType.AEGIS:
+      e.x -= config.enemySpeed * 0.55;
+      if (plane.alive) e.y += clamp((plane.y + plane.height / 2 - cy) * 0.015, -0.5, 0.5);
+      e.y = clamp(e.y, 50, maxY);
+      if (e.mode === 0 && e.hp <= e.maxHp * 0.5) {
+        // The shield overloads and drops, so the rest of the hull takes full damage
+        e.mode = 1;
+        emit(s, 'ring', e.x + 6, cy, 0, 0, 18, 70);
+        emit(s, 'flash', e.x + 6, cy, 0, 0, 8, 44);
+        onSound('hit');
+      }
+      if (e.x < SCREEN_WIDTH - 60 && plane.alive && s.frameCount - e.lastFiredFrame >= config.roamerFireRate * 1.5) {
+        fireAimed(s, e.x, cy, config.enemyBulletSpeed * 0.95, e.mode === 0 ? [0] : [-0.12, 0.12]);
+        e.lastFiredFrame = s.frameCount;
+        onSound('shoot');
+      }
+      e.vy = e.y - prevY;
+      break;
+
+    case EnemyType.SWARM:
+      e.x -= config.enemySpeed * 2.1;
+      e.y = clamp(e.baseY + Math.sin(e.age * 0.09) * 34, 40, maxY);
+      e.vy = e.y - prevY;
+      break;
+
+    case EnemyType.MINELAYER:
+      if (e.age >= 900) {
+        e.x -= 1.6; // job done, it leaves
+      } else if (e.x > e.targetX) {
+        e.x -= config.enemySpeed * 0.6 + 0.3;
+      } else {
+        e.y = clamp(e.y + Math.sin(e.age * 0.03) * 0.6, 60, maxY);
+        const mines = s.enemyBullets.filter(isMine).length;
+        if (mines < 5 && s.frameCount - e.lastFiredFrame >= config.roamerFireRate * 1.8) {
+          fireEnemyBullet(s, e.x + 10, cy, -0.9, rand(-0.35, 0.35), 'orb');
+          e.lastFiredFrame = s.frameCount;
+          onSound('shoot');
+        }
+      }
+      e.vy = e.y - prevY;
+      break;
+
     case EnemyType.BOMBER:
       e.x -= config.enemySpeed * 0.5;
       if (e.x < SCREEN_WIDTH - 90 && s.frameCount - e.lastFiredFrame >= config.roamerFireRate * 1.2) {
@@ -656,7 +725,7 @@ const updateEnemyBullets = (s: GameState) => {
   });
 
   s.enemyBullets = s.enemyBullets.filter(b => {
-    if (b.kind === 'seeker' && b.age > SEEKER_LIFETIME) {
+    if ((b.kind === 'seeker' && b.age > SEEKER_LIFETIME) || (isMine(b) && b.age > MINE_LIFETIME)) {
       spawnExplosion(s, b.x + b.width / 2, b.y + b.height / 2, 0.5); // burns out
       return false;
     }
@@ -703,6 +772,9 @@ const updateBoss = (s: GameState, onSound: SoundFn) => {
   const oy = boss.y + boss.height * def.muzzleY;
   const speed = s.config.enemyBulletSpeed * 0.9;
   const since = s.frameCount - boss.lastFiredFrame;
+  // Repeat bosses come back as Mk II, III...: they fire faster and add extra shots to each pattern
+  const mk = bossTier(s.config.bossIndex);
+  const pace = 1 + 0.2 * mk;
   const top = 50;
   const bottom = GROUND_Y - boss.height;
 
@@ -716,10 +788,11 @@ const updateBoss = (s: GameState, onSound: SoundFn) => {
     case 0: {
       // WARHAWK: steady patrol, rocket barrages, an aimed rocket too once wounded
       bounce(p2 ? 1.4 : 1);
-      if (since >= (p2 ? 85 : 120)) {
+      if (since * pace >= (p2 ? 85 : 120)) {
         boss.lastFiredFrame = s.frameCount;
         boss.volley += 1;
         const spread = p2 ? [-0.3, -0.15, 0, 0.15, 0.3] : [-0.2, 0, 0.2];
+        if (p2 && mk >= 1) spread.push(-0.45, 0.45);
         spread.forEach(a => fireEnemyBullet(s, ox, oy, -Math.cos(a) * speed * 1.3, Math.sin(a) * speed * 1.3, def.weapon));
         if (p2 && boss.volley % 2 === 0) fireAimed(s, ox, oy, speed * 1.3, [0], def.weapon);
         onSound('shoot');
@@ -730,7 +803,7 @@ const updateBoss = (s: GameState, onSound: SoundFn) => {
     case 1: {
       // IRON WHALE: slow carrier that launches escort fighters and homing seeker drones
       bounce(p2 ? 0.8 : 0.6);
-      if (since >= (p2 ? 200 : 290) && s.enemies.length < 4) {
+      if (since * pace >= (p2 ? 200 : 290) && s.enemies.length < 4 + mk) {
         boss.lastFiredFrame = s.frameCount;
         boss.volley += 1;
         const rusher = boss.volley % 2 === 1;
@@ -743,8 +816,8 @@ const updateBoss = (s: GameState, onSound: SoundFn) => {
         emit(s, 'flash', boss.x + 10, boss.y + boss.height * 0.5, 0, 0, 8, 26);
         onSound('shoot');
       }
-      if (s.frameCount % (p2 ? 110 : 160) === 0 && s.enemyBullets.filter(b => b.kind === 'seeker').length < 3) {
-        fireAimed(s, ox, oy, speed * 0.8, p2 ? [-0.5, 0.5] : [0], def.weapon);
+      if (s.frameCount % (p2 ? 110 : 160) === 0 && s.enemyBullets.filter(b => b.kind === 'seeker').length < 3 + mk) {
+        fireAimed(s, ox, oy, speed * 0.8, p2 ? (mk >= 1 ? [-0.5, 0, 0.5] : [-0.5, 0.5]) : [0], def.weapon);
         onSound('shoot');
       }
       break;
@@ -757,13 +830,13 @@ const updateBoss = (s: GameState, onSound: SoundFn) => {
       boss.y = clamp(boss.y, top, bottom);
       if (boss.burst > 0) {
         if (s.frameCount % 7 === 0) {
-          fireAimed(s, ox, oy, speed * 1.5, [0], def.weapon);
+          fireAimed(s, ox, oy, speed * 1.5, p2 && mk >= 1 && boss.burst % 2 === 0 ? [-0.14, 0.14] : [0], def.weapon);
           boss.burst -= 1;
           onSound('shoot');
         }
-      } else if (since >= (p2 ? 100 : 140)) {
+      } else if (since * pace >= (p2 ? 100 : 140)) {
         boss.lastFiredFrame = s.frameCount;
-        boss.burst = p2 ? 5 : 3;
+        boss.burst = (p2 ? 5 : 3) + mk;
       }
       break;
     }
@@ -771,13 +844,13 @@ const updateBoss = (s: GameState, onSound: SoundFn) => {
     default: {
       // TITAN: slow fortress sweeping fans of plasma orbs whose gaps shift every volley
       bounce(p2 ? 0.8 : 0.6);
-      if (since >= (p2 ? 95 : 130)) {
+      if (since * pace >= (p2 ? 95 : 130)) {
         boss.lastFiredFrame = s.frameCount;
         boss.volley += 1;
-        const count = p2 ? 7 : 5;
+        const count = Math.min(11, (p2 ? 7 : 5) + 2 * mk);
         const gap = (2 * 0.7) / (count - 1);
         fireFan(s, ox, oy, speed * 0.75, count, 0.7, boss.volley % 2 === 0 ? gap / 2 : 0, def.weapon);
-        if (p2) fireAimed(s, ox, oy, speed * 0.85, [0], def.weapon);
+        if (p2) fireAimed(s, ox, oy, speed * 0.85, mk >= 1 ? [-0.25, 0, 0.25] : [0], def.weapon);
         onSound('shoot');
       }
       break;
@@ -879,7 +952,7 @@ const blastAt = (s: GameState, m: Missile, onSound: SoundFn) => {
 const shootDownSeekers = (s: GameState, onSound: SoundFn) => {
   for (let j = s.bullets.length - 1; j >= 0; j--) {
     const b = s.bullets[j];
-    const k = s.enemyBullets.findIndex(eb => eb.kind === 'seeker' && isRectCollision(b, eb));
+    const k = s.enemyBullets.findIndex(eb => (eb.kind === 'seeker' || isMine(eb)) && isRectCollision(b, eb));
     if (k < 0) continue;
     const seeker = s.enemyBullets[k];
     spawnExplosion(s, seeker.x + seeker.width / 2, seeker.y + seeker.height / 2, 0.6);
@@ -1101,7 +1174,7 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
   if (config.isBoss && s.bossState === 0 && s.kills >= config.killTarget) {
     s.bossState = 1;
     s.bossTimer = 130;
-    setBanner(s, 'WARNING', `${BOSS_DEFS[bossKindFor(config.bossIndex)].name} APPROACHING`, 130);
+    setBanner(s, 'WARNING', `${bossTitle(config.bossIndex)} APPROACHING`, 130);
     onSound('warning');
   }
   if (s.bossState === 1) {
