@@ -73,10 +73,12 @@ describe('hit points', () => {
 
 describe('medic pickups', () => {
   it('drifts left to right and heals on contact', () => {
+    const roll = jest.spyOn(Math, 'random').mockReturnValue(0.1); // the drop roll succeeds
     const s = createInitialState(1, loadout(1));
     s.hp = 1;
     s.pickupTimer = 1;
     step(s);
+    roll.mockRestore();
     expect(s.pickups).toHaveLength(1);
     const x0 = s.pickups[0].x;
     step(s, 10);
@@ -98,6 +100,19 @@ describe('medic pickups', () => {
     s.pickups.push({ x: s.plane.x, y: s.plane.y, width: 28, height: 28, baseY: s.plane.y, age: 0 });
     step(s);
     expect(s.hp).toBe(s.maxHp);
+  });
+
+  it('is a random drop: a failed roll spawns nothing and waits a long time before rolling again', () => {
+    const roll = jest.spyOn(Math, 'random').mockReturnValue(0.99); // the drop roll fails
+    const s = createInitialState(1, loadout(1));
+    s.hp = 1;
+    s.pickupTimer = 1;
+    step(s);
+    expect(s.pickups).toHaveLength(0);
+    expect(s.pickupTimer).toBeGreaterThanOrEqual(590);
+    step(s, 300); // being hurt must not make one show up straight away
+    roll.mockRestore();
+    expect(s.pickups).toHaveLength(0);
   });
 
   it('does not spawn while the hull is full', () => {

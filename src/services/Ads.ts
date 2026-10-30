@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import mobileAds, { AdEventType, RewardedAd, RewardedAdEventType, TestIds } from 'react-native-google-mobile-ads';
 
 // Where a rewarded ad is shown. Each placement can have its own AdMob unit.
-export type AdPlacement = 'points' | 'doubleReward' | 'continue';
+export type AdPlacement = 'points' | 'doubleReward' | 'continue' | 'skin';
 
 // Real unit ids are Android-only for now and never used in debug builds, so developing
 // can't produce invalid traffic on the live account. Everything else serves Google's test ads.
@@ -10,6 +10,7 @@ const LIVE_UNIT_IDS: Partial<Record<AdPlacement, string>> = Platform.select({
   android: {
     continue: 'ca-app-pub-3142399721849091/4293085258',
     points: 'ca-app-pub-3142399721849091/6725922882', // menu / upgrade-screen "WATCH AD"
+    skin: 'ca-app-pub-3142399721849091/6725922882', // hangar skin unlocks share the points unit until it gets its own
     doubleReward: 'ca-app-pub-3142399721849091/4155599867', // "DOUBLE POINTS" on the result card
   },
   default: {},
@@ -19,10 +20,9 @@ export const AD_UNIT_IDS: Record<AdPlacement, string> = {
   points: TestIds.REWARDED,
   doubleReward: TestIds.REWARDED,
   continue: TestIds.REWARDED,
+  skin: TestIds.REWARDED,
   ...(__DEV__ ? {} : LIVE_UNIT_IDS),
 };
-
-export const REWARD_AD_POINTS = 25;
 
 const LOAD_TIMEOUT_MS = 15000;
 

@@ -110,6 +110,7 @@ export interface Loadout {
   cannon: number;
   missile: MissileType;
   missileLevel: number;
+  skin?: string; // jet livery, cosmetic only
 }
 
 // Floating text that rises from where something happened (score gains, combo bonuses)
@@ -205,7 +206,7 @@ export const createInitialState = (level: number, loadout: Loadout): GameState =
     spawnTimer: 100,
     bossState: 0,
     bossTimer: 0,
-    pickupTimer: rand(600, 1000),
+    pickupTimer: nextPickupDelay(),
     banner: {
       title: `LEVEL ${level}`,
       sub: config.isBoss ? 'BOSS BATTLE AHEAD' : `DESTROY ${config.killTarget} ENEMY PLANES`,
@@ -236,6 +237,10 @@ export const missileCharge = (state: GameState) => {
 };
 
 const rand = (min: number, max: number) => min + Math.random() * (max - min);
+
+// A medic kit is a lucky drop, not a reaction to damage: a dice roll every 10-30 seconds
+const PICKUP_DROP_CHANCE = 0.6;
+const nextPickupDelay = () => rand(600, 1800);
 
 const emit = (
   gameState: GameState,
@@ -985,19 +990,18 @@ const resolvePlayerHits = (s: GameState, onSound: SoundFn) => {
   }
 };
 
-// Medic kits drift in from the left at random heights; one appears every so often while the hull is damaged
+// Medic kits drift in from the left at random heights. Every so often the game rolls for one; it only drops
+// while the hull is damaged, but getting hurt never triggers it, so the timing stays unpredictable.
 const updatePickups = (s: GameState, onSound: SoundFn) => {
   const { plane } = s;
 
   s.pickupTimer -= 1;
   if (s.pickupTimer <= 0) {
-    if (s.hp < s.maxHp && s.pickups.length === 0) {
+    if (s.hp < s.maxHp && s.pickups.length === 0 && Math.random() < PICKUP_DROP_CHANCE) {
       const y = rand(70, GROUND_Y - PICKUP_SIZE.height - 24);
       s.pickups.push({ x: -PICKUP_SIZE.width, y, baseY: y, age: 0, ...PICKUP_SIZE });
-      s.pickupTimer = rand(900, 1500);
-    } else {
-      s.pickupTimer = 180; // hull is fine (or one is already out there): check again shortly
     }
+    s.pickupTimer = nextPickupDelay();
   }
 
   s.pickups.forEach(p => {
@@ -1056,7 +1060,7 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
     // Engine exhaust
     if (s.frameCount % 2 === 0) {
       emit(s, 'fire', plane.x + 2, plane.y + 13 + plane.tilt * 0.15,
-        rand(-4.5, -3), rand(-0.4, 0.4), rand(7, 12), rand(2.5, 4));
+        rand(-4.5, -3), rand(-0.4, 0.4), rand(6, 10), rand(1.6, 2.8));
     }
 
     fireCannon(s, onSound);

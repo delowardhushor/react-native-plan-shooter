@@ -5,7 +5,7 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 
 import { armorUpgradeCost } from '../src/engine/Armor';
 import { cannonUpgradeCost } from '../src/engine/Weapons';
-import { computeReward } from '../src/state/Progress';
+import { adRewardPoints, computeReward } from '../src/state/Progress';
 
 describe('early economy', () => {
   it('lets a new player afford the first armor upgrade within two level wins', () => {
@@ -20,5 +20,13 @@ describe('early economy', () => {
 
   it('stops paying the early bonus from level 5', () => {
     expect(computeReward(true, 0, 5)).toBe(10 + 5 * 2);
+  });
+
+  it('ad rewards start at 25, grow with the level and are capped', () => {
+    expect(adRewardPoints(1)).toBe(25);
+    expect(adRewardPoints(2)).toBeGreaterThan(adRewardPoints(1));
+    expect(adRewardPoints(10)).toBe(70);
+    expect(adRewardPoints(500)).toBe(250);
+    expect(adRewardPoints(0)).toBe(25);
   });
 });

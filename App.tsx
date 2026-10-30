@@ -2,17 +2,19 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { StatusBar, StyleSheet, View } from 'react-native';
 import { GameCanvas } from './src/components/GameCanvas';
 import { MenuScreen } from './src/components/MenuScreen';
+import { SkinsScreen, type SkinActions } from './src/components/SkinsScreen';
 import { UpgradeScreen, type UpgradeActions } from './src/components/UpgradeScreen';
 import { initAds } from './src/services/Ads';
 import { initSounds, playMusic } from './src/engine/SoundManager';
+import { SKINS, skinById } from './src/engine/Skins';
 import type { Loadout } from './src/engine/GameLoop';
 import { MAX_ARMOR_LEVEL, armorMaxHp, armorUpgradeCost } from './src/engine/Armor';
 import {
   MAX_CANNON_LEVEL, MAX_MISSILE_LEVEL, MISSILES, cannonUpgradeCost, missileUpgradeCost, type MissileType,
 } from './src/engine/Weapons';
-import { claimDaily, loadProgress, saveProgress, type Progress } from './src/state/Progress';
+import { claimDaily, equippedSkin, isSkinUnlocked, loadProgress, saveProgress, type Progress } from './src/state/Progress';
 
-type Screen = 'menu' | 'upgrades' | 'game';
+type Screen = 'menu' | 'upgrades' | 'skins' | 'game';
 
 interface Run {
   id: number;
@@ -22,6 +24,7 @@ interface Run {
 }
 
 const loadoutOf = (p: Progress): Loadout => ({
+  skin: equippedSkin(p).id,
   maxHp: armorMaxHp(p.armor),
   cannon: p.cannon,
   missile: p.equipped,
@@ -58,7 +61,16 @@ const App = () => {
     setScreen('game');
   };
 
-  const actions: UpgradeActions & { claimDaily: () => void; markRatePrompted: () => void } = {
+  const actions: UpgradeActions & SkinActions & { claimDaily: () => void; markRatePrompted: () => void } = {
+    equipSkin: id => update(p => (isSkinUnlocked(p, skinById(id)) ? { ...p, skin: id } : p)),
+    // Finishing the last ad of a skin unlocks it and equips it straight away
+    addSkinAd: id =>
+      update(p => {
+        const skin = SKINS.find(s => s.id === id);
+        if (!skin || skin.unlock.kind !== 'ads') return p;
+        const next = { ...p, skinAds: { ...p.skinAds, [id]: (p.skinAds[id] ?? 0) + 1 } };
+        return !isSkinUnlocked(p, skin) && isSkinUnlocked(next, skin) ? { ...next, skin: id } : next;
+      }),
     claimDaily: () => update(p => claimDaily(p)),
     markRatePrompted: () => update(p => (p.ratePrompted ? p : { ...p, ratePrompted: true })),
     addPoints: points => update(p => ({ ...p, points: p.points + points })),
@@ -122,6 +134,8 @@ const App = () => {
           onMenu={() => setScreen('menu')}
         />
       );
+    } else if (screen === 'skins') {
+      content = <SkinsScreen progress={progress} actions={actions} onBack={() => setScreen('menu')} />;
     } else if (screen === 'upgrades') {
       content = <UpgradeScreen progress={progress} actions={actions} onBack={() => setScreen('menu')} />;
     } else {
@@ -130,6 +144,7 @@ const App = () => {
           progress={progress}
           onPlay={() => startRun(progress.level)}
           onUpgrades={() => setScreen('upgrades')}
+          onSkins={() => setScreen('skins')}
           onAdPoints={actions.addPoints}
           onClaimDaily={actions.claimDaily}
         />

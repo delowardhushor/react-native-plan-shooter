@@ -1,6 +1,5 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Canvas, Circle, Group, Picture, RadialGradient, vec, type SkPicture } from '@shopify/react-native-skia';
 import { COLOR_ACCENT, COLOR_TEXT } from '../engine/Constants';
 import { MAX_ARMOR_LEVEL, armorMaxHp, armorUpgradeCost, medicHeal } from '../engine/Armor';
 import {
@@ -8,10 +7,11 @@ import {
   cannonStats, cannonUpgradeCost, missileStats, missileUpgradeCost, type MissileType,
 } from '../engine/Weapons';
 import { buzz, playSound } from '../engine/SoundManager';
-import { REWARD_AD_POINTS, showRewardedAd } from '../services/Ads';
-import type { Progress } from '../state/Progress';
-import { HERO_TIERS, getSprites } from '../render/Sprites';
+import { showRewardedAd } from '../services/Ads';
+import { adRewardPoints, equippedSkin, type Progress } from '../state/Progress';
+import { getHero, getSprites } from '../render/Sprites';
 import { MenuBackdrop } from './MenuBackdrop';
+import { SpriteIcon as Icon } from './SpriteIcon';
 import { GlassButton, Panel, PointsPill } from './ui';
 
 export interface UpgradeActions {
@@ -29,23 +29,7 @@ interface Props {
   onBack: () => void;
 }
 
-const ICON_W = 160;
-const ICON_H = 60;
 const GREEN = '#4cd97b';
-
-// Sprite on a soft glow in the item's colour
-const Icon = ({ picture, width, height, scale, color, dim }: {
-  picture: SkPicture; width: number; height: number; scale: number; color: string; dim?: boolean;
-}) => (
-  <Canvas style={{ width: ICON_W, height: ICON_H, opacity: dim ? 0.45 : 1 }}>
-    <Circle cx={ICON_W / 2} cy={ICON_H / 2} r={ICON_H / 2}>
-      <RadialGradient c={vec(ICON_W / 2, ICON_H / 2)} r={ICON_H / 2} colors={[`${color}77`, `${color}00`]} />
-    </Circle>
-    <Group transform={[{ translateX: (ICON_W - width * scale) / 2 }, { translateY: (ICON_H - height * scale) / 2 }, { scale }]}>
-      <Picture picture={picture} />
-    </Group>
-  </Canvas>
-);
 
 const LevelPips = ({ level, max, color }: { level: number; max: number; color: string }) => (
   <View style={styles.levelRow}>
@@ -75,9 +59,10 @@ const NeedMore = ({ points, cost }: { points: number; cost: number }) =>
 export const UpgradeScreen = ({ progress, actions, onBack }: Props) => {
   const S = getSprites();
   const { points } = progress;
+  const adReward = adRewardPoints(progress.level);
 
   const watchAd = async () => {
-    if (await showRewardedAd()) actions.addPoints(REWARD_AD_POINTS);
+    if (await showRewardedAd()) actions.addPoints(adReward);
   };
 
   // Every purchase gets a chime and a tick so it feels like something happened
@@ -99,7 +84,7 @@ export const UpgradeScreen = ({ progress, actions, onBack }: Props) => {
 
   return (
     <View style={styles.container}>
-      <MenuBackdrop level={progress.level} cannon={progress.cannon} />
+      <MenuBackdrop level={progress.level} cannon={progress.cannon} skin={equippedSkin(progress).id} />
       <View style={styles.shade} />
 
       <View style={styles.header}>
@@ -109,7 +94,7 @@ export const UpgradeScreen = ({ progress, actions, onBack }: Props) => {
           <View style={styles.titleBar} />
         </View>
         <View style={styles.headerRight}>
-          <GlassButton label="WATCH AD" sublabel={`+${REWARD_AD_POINTS} PTS`} small variant="ad" onPress={watchAd} />
+          <GlassButton label="WATCH AD" sublabel={`+${adReward} PTS`} small variant="ad" onPress={watchAd} />
           <PointsPill points={points} />
         </View>
       </View>
@@ -143,7 +128,7 @@ export const UpgradeScreen = ({ progress, actions, onBack }: Props) => {
         </Panel>
 
         <Panel style={styles.card} accent={COLOR_ACCENT}>
-          <Icon picture={S.heroes[Math.min(progress.cannon, HERO_TIERS) - 1]} width={56} height={26} scale={1.8} color={COLOR_ACCENT} />
+          <Icon picture={getHero(equippedSkin(progress).id, progress.cannon)} width={56} height={26} scale={1.8} color={COLOR_ACCENT} />
           <Text style={styles.name}>CANNON</Text>
           <LevelPips level={progress.cannon} max={MAX_CANNON_LEVEL} color={COLOR_ACCENT} />
           <Text style={styles.blurb}>{cannon.blurb}</Text>

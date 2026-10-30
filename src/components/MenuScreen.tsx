@@ -8,8 +8,8 @@ import {
   MAX_CANNON_LEVEL, MAX_MISSILE_LEVEL, MISSILES, MISSILE_TYPES, cannonUpgradeCost, missileUpgradeCost,
 } from '../engine/Weapons';
 import { biomeAccentFor, biomeNameFor } from '../render/Backdrop';
-import { REWARD_AD_POINTS, showRewardedAd } from '../services/Ads';
-import { dailyStatus, dayKey, type Progress } from '../state/Progress';
+import { showRewardedAd } from '../services/Ads';
+import { adRewardPoints, dailyStatus, dayKey, equippedSkin, type Progress } from '../state/Progress';
 import { DailyRewardCard } from './DailyRewardCard';
 import { MenuBackdrop } from './MenuBackdrop';
 import { GlassButton, Panel, PointsPill, SoundToggle } from './ui';
@@ -18,6 +18,7 @@ interface Props {
   progress: Progress;
   onPlay: () => void;
   onUpgrades: () => void;
+  onSkins: () => void;
   onAdPoints: (points: number) => void;
   onClaimDaily: () => void;
 }
@@ -74,7 +75,7 @@ const Chip = ({ label, value }: { label: string; value: string }) => (
   </View>
 );
 
-export const MenuScreen = ({ progress, onPlay, onUpgrades, onAdPoints, onClaimDaily }: Props) => {
+export const MenuScreen = ({ progress, onPlay, onUpgrades, onSkins, onAdPoints, onClaimDaily }: Props) => {
   const [, setTick] = useState(0);
   const daily = dailyStatus(progress);
   const showDaily = daily.claimable && dailyDismissedOn !== dayKey(new Date());
@@ -84,6 +85,7 @@ export const MenuScreen = ({ progress, onPlay, onUpgrades, onAdPoints, onClaimDa
   const missile = MISSILES[progress.equipped];
   const canUpgrade = hasAffordableUpgrade(progress);
   const accent = biomeAccentFor(progress.level);
+  const adReward = adRewardPoints(progress.level);
 
   // Gentle breathing pulse on PLAY so the main action draws the eye
   const pulse = useRef(new Animated.Value(0)).current;
@@ -100,12 +102,12 @@ export const MenuScreen = ({ progress, onPlay, onUpgrades, onAdPoints, onClaimDa
   const playScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.035] });
 
   const watchAd = async () => {
-    if (await showRewardedAd()) onAdPoints(REWARD_AD_POINTS);
+    if (await showRewardedAd()) onAdPoints(adReward);
   };
 
   return (
     <View style={styles.container}>
-      <MenuBackdrop level={progress.level} cannon={progress.cannon} />
+      <MenuBackdrop level={progress.level} cannon={progress.cannon} skin={equippedSkin(progress).id} />
 
       <View style={styles.header}>
         <View>
@@ -117,6 +119,7 @@ export const MenuScreen = ({ progress, onPlay, onUpgrades, onAdPoints, onClaimDa
           </View>
         </View>
         <View style={styles.headerRight}>
+          <GlassButton label="SKINS" small onPress={onSkins} />
           <SoundToggle />
           <PointsPill points={progress.points} />
         </View>
@@ -158,7 +161,7 @@ export const MenuScreen = ({ progress, onPlay, onUpgrades, onAdPoints, onClaimDa
               onPress={onUpgrades}
               style={styles.flex}
             />
-            <GlassButton label="WATCH AD" sublabel={`+${REWARD_AD_POINTS} PTS`} small variant="ad" onPress={watchAd} style={styles.flex} />
+            <GlassButton label="WATCH AD" sublabel={`+${adReward} PTS`} small variant="ad" onPress={watchAd} style={styles.flex} />
           </View>
         </Panel>
       </View>

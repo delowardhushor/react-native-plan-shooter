@@ -6,7 +6,7 @@ import { GROUND_Y, drawBackdrop, drawVignette } from './Backdrop';
 import { createPictureUnbounded, fillPaint, strokePaint } from './gfx';
 import {
   BOSS_FRAMES, BOSS_GLOWS, ENEMY_FRAMES, ENEMY_GLOWS, HERO_TIERS, JET_FRAME, MEDIC_FRAME, ROCKET_FRAME, SEEKER_FRAME,
-  getSprites, type Sprites,
+  getHero, getSprites, type Sprites,
 } from './Sprites';
 
 const normalPaint = Skia.Paint();
@@ -242,8 +242,8 @@ export const renderFrame = (state: GameState): SkPicture =>
     if (playerAlive && !blinkHidden) {
       const tier = Math.min(state.loadout.cannon, HERO_TIERS);
       drawAircraft(c, {
-        pic: S.heroes[tier - 1], frame: JET_FRAME, x: plane.x, y: plane.y, w: PLANE_SIZE.width, h: PLANE_SIZE.height,
-        flip: false, tilt: plane.tilt, hit: false, glows: [[2, 13.5, 22 + tier * 2]], frameCount: f, S, muzzle: plane.muzzle > 0,
+        pic: getHero(state.loadout.skin, tier), frame: JET_FRAME, x: plane.x, y: plane.y, w: PLANE_SIZE.width, h: PLANE_SIZE.height,
+        flip: false, tilt: plane.tilt, hit: false, glows: [[2, 13.5, 16 + tier]], frameCount: f, S, muzzle: plane.muzzle > 0,
       });
     }
 
@@ -282,9 +282,9 @@ export const renderFrame = (state: GameState): SkPicture =>
 // Backdrop with the player's jet cruising, used behind the menu screens.
 // The jet is shown larger than in play, trailing a fiery exhaust, so the home screen has a hero to look at.
 const MENU_JET_SCALE = 1.9;
-const TRAIL_PUFFS = 16;
+const TRAIL_PUFFS = 11;
 
-export const renderMenuFrame = (frame: number, level: number, cannon: number): SkPicture =>
+export const renderMenuFrame = (frame: number, level: number, cannon: number, skin?: string): SkPicture =>
   createPictureUnbounded(c => {
     const S = getSprites();
     drawBackdrop(c, frame, level);
@@ -301,13 +301,13 @@ export const renderMenuFrame = (frame: number, level: number, cannon: number): S
       const t = i / TRAIL_PUFFS;
       const idx = Math.min(S.fire.length - 1, Math.floor(t * S.fire.length));
       const wobble = Math.sin(frame * 0.25 + i * 0.9) * 2.2 * t;
-      blit(c, S.fire[idx], x + 2 - i * 9, nozzleY + wobble + tilt * 0.6 * (1 - t), 30 - t * 18, additivePaint, 0.85 * (1 - t));
+      blit(c, S.fire[idx], x + 2 - i * 7, nozzleY + wobble + tilt * 0.6 * (1 - t), 17 - t * 11, additivePaint, 0.7 * (1 - t));
     }
 
     const tier = Math.min(Math.max(cannon, 1), HERO_TIERS);
     drawAircraft(c, {
-      pic: S.heroes[tier - 1], frame: JET_FRAME, x, y, w, h,
-      flip: false, tilt, hit: false, glows: [[2, 13.5, 22 + tier * 2]], frameCount: frame, S,
+      pic: getHero(skin, tier), frame: JET_FRAME, x, y, w, h,
+      flip: false, tilt, hit: false, glows: [[2, 13.5, 16 + tier]], frameCount: frame, S,
     });
     drawVignette(c, level);
   });

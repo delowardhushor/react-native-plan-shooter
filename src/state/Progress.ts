@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { MissileType } from '../engine/Weapons';
+import { DEFAULT_SKIN, skinById, type Skin } from '../engine/Skins';
 
 export interface Progress {
   level: number;   // the level the player will play next
@@ -12,6 +13,8 @@ export interface Progress {
   lastClaimDay: string; // local YYYY-MM-DD of the last daily reward, '' if never
   streak: number;       // consecutive days claimed
   ratePrompted: boolean; // the store-rating nudge is only ever shown once
+  skin: string;          // equipped jet livery
+  skinAds: Record<string, number>; // rewarded ads watched toward each ad-locked skin
 }
 
 const KEY = 'planeshooter.progress.v1';
@@ -31,6 +34,8 @@ export const defaultProgress = (): Progress => ({
   lastClaimDay: '',
   streak: 0,
   ratePrompted: false,
+  skin: DEFAULT_SKIN,
+  skinAds: {},
 });
 
 export const loadProgress = async (): Promise<Progress> => {
@@ -42,6 +47,7 @@ export const loadProgress = async (): Promise<Progress> => {
     return {
       ...base,
       ...saved,
+      skinAds: { ...saved.skinAds },
       missiles: {
         homing: { ...base.missiles.homing, ...saved.missiles?.homing },
         blast: { ...base.missiles.blast, ...saved.missiles?.blast },
@@ -56,6 +62,9 @@ export const loadProgress = async (): Promise<Progress> => {
 export const saveProgress = (progress: Progress) => {
   AsyncStorage.setItem(KEY, JSON.stringify(progress)).catch(() => {});
 };
+
+// Points for a "WATCH AD" button: grows with the level so an ad stays worth about one level win
+export const adRewardPoints = (level: number) => Math.min(250, 25 + (Math.max(1, level) - 1) * 5);
 
 // The first few wins pay extra so a new player can afford their first upgrade within a couple of levels
 const earlyWinBonus = (level: number) => Math.max(0, 5 - level) * 10;
@@ -91,4 +100,17 @@ export const claimDaily = (p: Progress, now: Date = new Date()): Progress => {
   const status = dailyStatus(p, now);
   if (!status.claimable) return p;
   return { ...p, points: p.points + status.reward, streak: status.streak, lastClaimDay: dayKey(now) };
+};
+
+// Skins unlock by being free, by reaching a level, or by watching enough rewarded ads
+export const isSkinUnlocked = (p: Progress, skin: Skin) => {
+  const u = skin.unlock;
+  if (u.kind === 'free') return true;
+  if (u.kind === 'level') return p.level >= u.level;
+  return (p.skinAds[skin.id] ?? 0) >= u.count;
+};
+
+export const equippedSkin = (p: Progress) => {
+  const skin = skinById(p.skin);
+  return isSkinUnlocked(p, skin) ? skin : skinById(DEFAULT_SKIN);
 };

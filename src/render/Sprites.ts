@@ -1,6 +1,7 @@
-import { Skia, BlurStyle, type SkCanvas, type SkImage, type SkPicture } from '@shopify/react-native-skia';
+import { Skia, BlurStyle, ClipOp, type SkCanvas, type SkImage, type SkPicture } from '@shopify/react-native-skia';
 import { MISSILES, type MissileType } from '../engine/Weapons';
 import { EnemyType } from '../engine/Enemies';
+import { skinById, type HeroPalette } from '../engine/Skins';
 import { bake, fillPaint, linear, poly, radial, record, shaderPaint, strokePaint } from './gfx';
 
 // Sprites are authored facing RIGHT. Enemies are mirrored at draw time.
@@ -11,6 +12,38 @@ export const DELTA_FRAME = { width: 48, height: 20 };
 export const BOMBER_FRAME = { width: 80, height: 36 };
 export const SNIPER_FRAME = { width: 60, height: 22 };
 export const TITAN_FRAME = { width: 72, height: 40 };
+
+// Small detailing helpers shared by the enemy and boss sprites -------------------------------------
+
+// Diagonal black-and-yellow warning stripes clipped to a rectangle
+const hazardStripes = (c: SkCanvas, x: number, y: number, w: number, h: number, color = '#ffcf3a') => {
+  c.save();
+  c.clipRect(Skia.XYWHRect(x, y, w, h), ClipOp.Intersect, true);
+  c.drawRect(Skia.XYWHRect(x, y, w, h), fillPaint('#14161b'));
+  const stripe = fillPaint(color);
+  for (let sx = x - h; sx < x + w; sx += h * 1.15) {
+    c.drawPath(poly([[sx, y + h], [sx + h * 0.55, y + h], [sx + h * 1.55, y], [sx + h, y]]), stripe);
+  }
+  c.restore();
+};
+
+// A row of rivets along a panel seam
+const rivets = (c: SkCanvas, x0: number, x1: number, y: number, step = 4) => {
+  const lit = fillPaint('rgba(255,255,255,0.4)');
+  const shade = fillPaint('rgba(0,0,0,0.4)');
+  for (let x = x0; x <= x1; x += step) {
+    c.drawCircle(x, y + 0.45, 0.5, shade);
+    c.drawCircle(x, y, 0.5, lit);
+  }
+};
+
+// A glowing warning or navigation light
+const beacon = (c: SkCanvas, x: number, y: number, color: string, r = 1) => {
+  c.drawCircle(x, y, r * 2.6, fillPaint(hexAlpha(color, 0.22)));
+  c.drawCircle(x, y, r * 1.6, fillPaint(hexAlpha(color, 0.5)));
+  c.drawCircle(x, y, r, fillPaint(color));
+  c.drawCircle(x, y, r * 0.4, fillPaint('#ffffff'));
+};
 
 interface JetPalette {
   bodyTop: string;
@@ -65,6 +98,15 @@ const drawJet = (c: SkCanvas, pal: JetPalette) => {
   c.drawLine(39, 15.5, 27.5, 25.6, strokePaint('rgba(255,255,255,0.45)', 0.8));
   c.drawPath(poly([[11.5, 14.6], [5.5, 19.8], [1.5, 19.8], [5, 14.6]]), shaderPaint(linear(0, 14.6, 0, 19.8, pal.wingNear)));
 
+  // Menace: warning chevrons, rivets, an under-wing missile and lit wingtips
+  c.drawPath(poly([[12, 9.6], [15, 9.6], [17.4, 13.4], [14.4, 13.4]]), fillPaint(pal.accent));
+  c.drawPath(poly([[16.4, 9.6], [19.4, 9.6], [21.8, 13.4], [18.8, 13.4]]), fillPaint(pal.accent));
+  rivets(c, 24, 38, 10.9, 3.5);
+  c.drawRRect(Skia.RRectXY(Skia.XYWHRect(24, 22.4, 11, 1.7), 0.8, 0.8), fillPaint('#c9ced6'));
+  c.drawPath(poly([[35, 22.4], [38, 23.25], [35, 24.1]]), fillPaint(pal.accent));
+  beacon(c, 19.6, 25, pal.accent, 0.8);
+  beacon(c, 22.6, 3.4, pal.accent, 0.8);
+
   // Canopy
   const canopy = Skia.PathBuilder.Make();
   canopy.moveTo(39.5, 9.5);
@@ -88,22 +130,16 @@ const drawJet = (c: SkCanvas, pal: JetPalette) => {
 // It evolves with the cannon level: wing cannons from tier 3, gold-plated nose and wingtip lights from tier 5.
 export const HERO_TIERS = 5;
 
-const HERO = {
-  bodyTop: '#f6f9ff', bodyMid: '#4a86dc', bodyLow: '#16336a',
-  wingNear: ['#8bb8f7', '#1e4690'] as [string, string], wingFar: '#17305f',
-  canopy: ['#d4f8ff', '#1a6fd6'] as [string, string],
-};
-
-const drawHero = (c: SkCanvas, tier: number) => {
-  const gold = tier >= 5 ? '#ffd35a' : '#ffb23e';
+const drawHero = (c: SkCanvas, tier: number, pal: HeroPalette) => {
+  const gold = tier >= 5 ? pal.accentHi : pal.accent;
 
   // Far-side surfaces and the second (far) tail fin
-  c.drawPath(poly([[37, 11], [28, 3.2], [22, 3.2], [25, 11]]), fillPaint(HERO.wingFar));
-  c.drawPath(poly([[10, 11], [5.5, 6.2], [2, 6.2], [5, 11]]), fillPaint(HERO.wingFar));
-  c.drawPath(poly([[22, 9.8], [14.5, 1.8], [10.5, 1.8], [13, 10]]), fillPaint('#1d3c75'));
+  c.drawPath(poly([[37, 11], [28, 3.2], [22, 3.2], [25, 11]]), fillPaint(pal.wingFar));
+  c.drawPath(poly([[10, 11], [5.5, 6.2], [2, 6.2], [5, 11]]), fillPaint(pal.wingFar));
+  c.drawPath(poly([[22, 9.8], [14.5, 1.8], [10.5, 1.8], [13, 10]]), fillPaint(pal.farFin));
 
   // Main tail fin with a gold flash
-  c.drawPath(poly([[19, 9.8], [9, 0.4], [3.2, 0.4], [6.5, 10.2]]), shaderPaint(linear(0, 0, 0, 10, ['#eef4ff', '#5f93e0'])));
+  c.drawPath(poly([[19, 9.8], [9, 0.4], [3.2, 0.4], [6.5, 10.2]]), shaderPaint(linear(0, 0, 0, 10, pal.tailFin)));
   c.drawPath(poly([[8.8, 1.8], [4.6, 1.8], [5.9, 5.8], [10.3, 5.8]]), fillPaint(gold));
 
   // Fuselage: white back fading to a deep blue belly
@@ -117,7 +153,7 @@ const drawHero = (c: SkCanvas, tier: number) => {
   body.lineTo(36, 18);
   body.cubicTo(45, 18, 51, 16.6, 56, 14);
   body.close();
-  c.drawPath(body.build(), shaderPaint(linear(0, 9, 0, 18, [HERO.bodyTop, HERO.bodyMid, HERO.bodyLow], [0, 0.5, 1])));
+  c.drawPath(body.build(), shaderPaint(linear(0, 9, 0, 18, [pal.bodyTop, pal.bodyMid, pal.bodyLow], [0, 0.5, 1])));
 
   // Gold racing stripe with a pale line under it
   c.drawLine(7.5, 12.7, 39, 12.3, strokePaint(gold, 1.2));
@@ -130,19 +166,19 @@ const drawHero = (c: SkCanvas, tier: number) => {
   c.drawPath(poly([[34, 13.9], [41, 14.2], [41, 17.7], [34, 17.9]]), fillPaint('rgba(5,10,30,0.55)'));
   c.drawLine(34, 14, 41, 14.3, strokePaint('rgba(255,255,255,0.5)', 0.5));
   c.drawPath(poly([[52.2, 12.4], [56, 14], [52.2, 15.7]]), fillPaint(tier >= 5 ? gold : 'rgba(22,30,50,0.9)'));
-  c.drawCircle(27, 15.4, 1.8, fillPaint('#0f2a5c'));
+  c.drawCircle(27, 15.4, 1.8, fillPaint(pal.bodyLow));
   c.drawCircle(27, 15.4, 1.1, fillPaint(gold));
   c.drawCircle(27, 15.4, 0.4, fillPaint('#ffffff'));
 
   // Near wing and tailplane, lit from above, with a gold leading edge
-  c.drawPath(poly([[39, 15.5], [27.5, 25.6], [19, 25.6], [23, 15.5]]), shaderPaint(linear(0, 15.5, 0, 25.6, HERO.wingNear)));
+  c.drawPath(poly([[39, 15.5], [27.5, 25.6], [19, 25.6], [23, 15.5]]), shaderPaint(linear(0, 15.5, 0, 25.6, pal.wingNear)));
   c.drawLine(39, 15.5, 27.5, 25.6, strokePaint(gold, tier >= 2 ? 1.1 : 0.8));
   c.drawLine(31, 17.5, 22.5, 24.8, strokePaint('rgba(255,255,255,0.22)', 0.6));
-  c.drawPath(poly([[11.5, 14.6], [5.5, 19.8], [1.5, 19.8], [5, 14.6]]), shaderPaint(linear(0, 14.6, 0, 19.8, HERO.wingNear)));
+  c.drawPath(poly([[11.5, 14.6], [5.5, 19.8], [1.5, 19.8], [5, 14.6]]), shaderPaint(linear(0, 14.6, 0, 19.8, pal.wingNear)));
 
   // Wing cannons poke out ahead of the near wing from tier 3
   if (tier >= 3) {
-    c.drawRRect(Skia.RRectXY(Skia.XYWHRect(27, 20.3, 12, 1.7), 0.8, 0.8), fillPaint('#1b2740'));
+    c.drawRRect(Skia.RRectXY(Skia.XYWHRect(27, 20.3, 12, 1.7), 0.8, 0.8), fillPaint(pal.bodyLow));
     c.drawRRect(Skia.RRectXY(Skia.XYWHRect(36.5, 20.1, 3.2, 2.1), 0.6, 0.6), fillPaint(gold));
   }
 
@@ -153,7 +189,7 @@ const drawHero = (c: SkCanvas, tier: number) => {
   canopy.lineTo(51, 11);
   canopy.lineTo(39.5, 10.2);
   canopy.close();
-  c.drawPath(canopy.build(), shaderPaint(linear(0, 5.6, 0, 10.6, HERO.canopy)));
+  c.drawPath(canopy.build(), shaderPaint(linear(0, 5.6, 0, 10.6, pal.canopy)));
   c.drawLine(45.2, 6.6, 45.4, 10.4, strokePaint('rgba(10,30,70,0.5)', 0.6));
   const glint = Skia.PathBuilder.Make();
   glint.moveTo(41.6, 8.6);
@@ -187,7 +223,7 @@ const BOSS_PALETTE: GunshipPalette = {
   wingNear: ['#5d6277', '#22252f'], wingFar: '#15171d', accent: '#e0322b',
 };
 
-const drawGunship = (c: SkCanvas, pal: GunshipPalette) => {
+const drawGunship = (c: SkCanvas, pal: GunshipPalette, boss = false) => {
   // Far wing + far engine
   c.drawPath(poly([[47, 14], [38, 1.5], [24, 1.5], [29, 14]]), fillPaint(pal.wingFar));
   c.drawOval(Skia.XYWHRect(25, 5, 21, 7), fillPaint('#1c1f17'));
@@ -236,6 +272,21 @@ const drawGunship = (c: SkCanvas, pal: GunshipPalette) => {
   c.drawPath(glint.build(), strokePaint('rgba(255,255,255,0.7)', 1));
 
   c.drawLine(10, 12.8, 40, 12.5, strokePaint('rgba(255,255,255,0.35)', 0.9));
+
+  // Hazard band, seam rivets and lit wingtips
+  hazardStripes(c, 11, 14.2, 15, 2.6, pal.accent);
+  rivets(c, 28, 46, 15.6, 3.6);
+  beacon(c, 19, 33.2, pal.accent, 0.9);
+  beacon(c, 26, 1.8, pal.accent, 0.9);
+
+  if (boss) {
+    // Shoulder armour and a glaring red eye slit
+    c.drawPath(poly([[40, 12.2], [55, 13.4], [52, 17], [40, 16.4]]), shaderPaint(linear(0, 12, 0, 17, ['#3a3f4e', '#171a22'])));
+    c.drawLine(40, 12.4, 54.6, 13.5, strokePaint('rgba(255,255,255,0.4)', 0.8));
+    c.drawPath(poly([[43, 14.4], [51, 14.9], [50.6, 16], [43, 15.6]]), fillPaint('#ff3b2a'));
+    beacon(c, 51.6, 15.4, '#ff5a3a', 1.1);
+    c.drawPath(poly([[58, 21.6], [64, 19.6], [60, 23.2]]), fillPaint(pal.accent));
+  }
 };
 
 const WAVER_PALETTE: JetPalette = {
@@ -312,6 +363,10 @@ const drawDelta = (c: SkCanvas, pal: JetPalette, boss: boolean) => {
     c.drawOval(Skia.XYWHRect(14, 0, 12, 2.6), fillPaint(pal.wingFar));
     c.drawCircle(25, 1.3, 1, fillPaint(pal.accent));
     c.drawLine(8, 10, 40, 10, strokePaint(pal.accent, 0.6));
+    beacon(c, 42, 9.6, pal.accent, 1);
+    rivets(c, 14, 30, 8.7, 3.4);
+  } else {
+    beacon(c, 9.5, 18.6, pal.accent, 0.8);
   }
 };
 
@@ -351,12 +406,23 @@ const drawBomber = (c: SkCanvas, pal: JetPalette, carrier: boolean) => {
   c.drawPath(glass.build(), shaderPaint(linear(0, 9.6, 0, 16, pal.canopy)));
   c.drawLine(12, 13.2, 48, 12.9, strokePaint('rgba(255,255,255,0.35)', 0.9));
 
+  // Rivets, wingtip beacons and bomb-bay doors
+  rivets(c, 12, 56, 14.6, 4);
+  beacon(c, 24, 35, pal.accent, 1);
+  beacon(c, 30, 2.4, pal.accent, 1);
+  if (!carrier) {
+    c.drawRect(Skia.XYWHRect(18, 24, 26, 3.2), fillPaint('rgba(10,8,4,0.45)'));
+    [18, 31, 44].forEach(x => c.drawLine(x, 24, x, 27.2, strokePaint('rgba(255,255,255,0.25)', 0.6)));
+    hazardStripes(c, 12, 17.6, 14, 2.6, pal.accent);
+  }
+
   if (carrier) {
     c.drawRect(Skia.XYWHRect(22, 15.4, 28, 6), fillPaint('rgba(5,10,18,0.75)'));
     [30, 38, 46].forEach(x => c.drawLine(x, 15.4, x, 21.4, strokePaint(pal.accent, 0.8)));
     c.drawLine(40, 12.4, 40, 7.6, strokePaint(pal.bodyLow, 1));
     c.drawOval(Skia.XYWHRect(34, 5.6, 12, 3.2), fillPaint(pal.bodyTop));
     c.drawCircle(40, 7.2, 1, fillPaint(pal.accent));
+    [30, 38, 46].forEach(x => beacon(c, x + 4, 18.4, pal.accent, 0.7));
   }
 };
 
@@ -381,8 +447,9 @@ const drawSniper = (c: SkCanvas, pal: JetPalette) => {
   c.drawLine(40, 12.6, 26, 21.5, strokePaint('rgba(255,255,255,0.4)', 0.8));
   c.drawPath(poly([[34, 9.6], [37, 7], [43, 7.2], [46, 9.6]]), shaderPaint(linear(0, 7, 0, 9.6, pal.canopy)));
   c.drawLine(10, 9.8, 44, 9.8, strokePaint('rgba(255,255,255,0.4)', 0.7));
-  c.drawCircle(52, 11.4, 1.5, fillPaint(pal.accent));
-  c.drawCircle(52, 11.4, 0.6, fillPaint('#ffffff'));
+  beacon(c, 52, 11.4, pal.accent, 1.4);
+  beacon(c, 21, 21.4, pal.accent, 0.7);
+  rivets(c, 14, 40, 10.6, 3.6);
   c.drawRRect(Skia.RRectXY(Skia.XYWHRect(1.6, 10.2, 2.6, 3), 0.8, 0.8), fillPaint('#1d2228'));
 };
 
@@ -420,6 +487,15 @@ const drawTitan = (c: SkCanvas, pal: JetPalette) => {
   c.drawCircle(44, 20, 6.2, shaderPaint(radial(44, 20, 6.2, ['#ffffff', '#ff8a5e', pal.accent, '#5a0f08'], [0, 0.25, 0.65, 1])));
 
   [12, 18, 24].forEach(y => c.drawRect(Skia.XYWHRect(0.8, y, 3, 4), fillPaint('#1d2228')));
+
+  // Armour studs, hazard plating, glowing engine ports and shoulder spikes
+  rivets(c, 14, 58, 9.4, 4);
+  rivets(c, 14, 58, 31, 4);
+  hazardStripes(c, 10, 22.4, 24, 2.6, pal.accent);
+  c.drawCircle(44, 20, 8.7, strokePaint(hexAlpha(pal.accent, 0.7), 0.9));
+  [14, 20, 26].forEach(y => beacon(c, 2.4, y, pal.accent, 0.9));
+  c.drawPath(poly([[60, 11], [66, 6.4], [64, 12.6]]), fillPaint(pal.accent));
+  c.drawPath(poly([[60, 29], [66, 33.6], [64, 27.4]]), fillPaint(pal.accent));
 };
 
 export interface Frame { width: number; height: number }
@@ -546,7 +622,6 @@ const hexAlpha = (hex: string, a: number) => {
 };
 
 export interface Sprites {
-  heroes: SkPicture[]; // index = cannon level - 1
   enemies: Record<EnemyType, SkPicture>;
   bosses: SkPicture[];
   missiles: Record<MissileType, SkPicture>;
@@ -599,7 +674,6 @@ export const getSprites = (): Sprites => {
   const smoke = SMOKE_RAMP.map(col => glowImage(32, [hexAlpha(col, 0.7), hexAlpha(col, 0.4), hexAlpha(col, 0)], [0, 0.5, 1]));
 
   cache = {
-    heroes: Array.from({ length: HERO_TIERS }, (_, i) => record(JET_FRAME.width, JET_FRAME.height, c => drawHero(c, i + 1))),
     enemies: {
       [EnemyType.STANDARD]: record(JET_FRAME.width, JET_FRAME.height, c => drawJet(c, ENEMY_PALETTE)),
       [EnemyType.ROAMER]: record(GUNSHIP_FRAME.width, GUNSHIP_FRAME.height, c => drawGunship(c, GUNSHIP_PALETTE)),
@@ -609,7 +683,7 @@ export const getSprites = (): Sprites => {
       [EnemyType.BOMBER]: record(BOMBER_FRAME.width, BOMBER_FRAME.height, c => drawBomber(c, BOMBER_PALETTE, false)),
     },
     bosses: [
-      record(GUNSHIP_FRAME.width, GUNSHIP_FRAME.height, c => drawGunship(c, BOSS_PALETTE)),
+      record(GUNSHIP_FRAME.width, GUNSHIP_FRAME.height, c => drawGunship(c, BOSS_PALETTE, true)),
       record(BOMBER_FRAME.width, BOMBER_FRAME.height, c => drawBomber(c, CARRIER_PALETTE, true)),
       record(DELTA_FRAME.width, DELTA_FRAME.height, c => drawDelta(c, PHANTOM_PALETTE, true)),
       record(TITAN_FRAME.width, TITAN_FRAME.height, c => drawTitan(c, TITAN_PALETTE)),
@@ -626,4 +700,18 @@ export const getSprites = (): Sprites => {
     bullet, enemyBullet, flash, engineGlow, engineGlowCyan, fire, smoke,
   };
   return cache;
+};
+
+// The player's jet for a livery at a given cannon level; built on first use then cached
+const heroCache = new Map<string, SkPicture>();
+export const getHero = (skinId: string | undefined, cannonLevel: number): SkPicture => {
+  const skin = skinById(skinId);
+  const tier = Math.min(Math.max(cannonLevel, 1), HERO_TIERS);
+  const key = `${skin.id}:${tier}`;
+  let pic = heroCache.get(key);
+  if (!pic) {
+    pic = record(JET_FRAME.width, JET_FRAME.height, c => drawHero(c, tier, skin.palette));
+    heroCache.set(key, pic);
+  }
+  return pic;
 };
