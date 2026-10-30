@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { StatusBar, StyleSheet, View } from 'react-native';
 import { GameCanvas } from './src/components/GameCanvas';
 import { MenuScreen } from './src/components/MenuScreen';
+import { CampaignScreen } from './src/components/CampaignScreen';
 import { SkinsScreen, type SkinActions } from './src/components/SkinsScreen';
 import { UpgradeScreen, type UpgradeActions } from './src/components/UpgradeScreen';
 import { initAds } from './src/services/Ads';
@@ -12,15 +13,17 @@ import { MAX_ARMOR_LEVEL, armorMaxHp, armorUpgradeCost } from './src/engine/Armo
 import {
   MAX_CANNON_LEVEL, MAX_MISSILE_LEVEL, MISSILES, cannonUpgradeCost, missileUpgradeCost, type MissileType,
 } from './src/engine/Weapons';
-import { claimDaily, equippedSkin, isSkinUnlocked, loadProgress, saveProgress, type Progress } from './src/state/Progress';
+import { claimDaily, equippedSkin, isSkinUnlocked, loadProgress, saveProgress, starsFor, type Progress } from './src/state/Progress';
 
-type Screen = 'menu' | 'upgrades' | 'skins' | 'game';
+type Screen = 'menu' | 'upgrades' | 'skins' | 'campaign' | 'game';
 
 interface Run {
   id: number;
   level: number;
   loadout: Loadout;
   bestScore: number; // best score when the run began, so the result card can flag a new record
+  isReplay: boolean; // replaying a cleared level (pays reduced points)
+  prevStars: number; // best stars on this level before the run
 }
 
 const loadoutOf = (p: Progress): Loadout => ({
@@ -57,7 +60,9 @@ const App = () => {
 
   const startRun = (level: number) => {
     if (!progress) return;
-    setRun(r => ({ id: (r?.id ?? 0) + 1, level, loadout: loadoutOf(progress), bestScore: progress.bestScore }));
+    setRun(r => ({ id: (r?.id ?? 0) + 1, level, loadout: loadoutOf(progress), bestScore: progress.bestScore,
+      isReplay: level < progress.level, prevStars: starsFor(progress, level),
+    }));
     setScreen('game');
   };
 
@@ -119,11 +124,14 @@ const App = () => {
           bestScore={run.bestScore}
           showRatePrompt={!progress.ratePrompted}
           onRatePromptShown={actions.markRatePrompted}
-          onFinish={(won, reward, score) =>
+          isReplay={run.isReplay}
+          prevStars={run.prevStars}
+          onFinish={(won, reward, score, stars) =>
             update(p => ({
               ...p,
               points: p.points + reward,
               bestScore: Math.max(p.bestScore, score),
+              stars: won ? { ...p.stars, [run.level]: Math.max(p.stars[run.level] ?? 0, stars) } : p.stars,
               // Only advance when the player beat their frontier level
               level: won && run.level === p.level ? p.level + 1 : p.level,
             }))
@@ -134,6 +142,8 @@ const App = () => {
           onMenu={() => setScreen('menu')}
         />
       );
+    } else if (screen === 'campaign') {
+      content = <CampaignScreen progress={progress} onPlayLevel={startRun} onBack={() => setScreen('menu')} />;
     } else if (screen === 'skins') {
       content = <SkinsScreen progress={progress} actions={actions} onBack={() => setScreen('menu')} />;
     } else if (screen === 'upgrades') {
@@ -145,6 +155,7 @@ const App = () => {
           onPlay={() => startRun(progress.level)}
           onUpgrades={() => setScreen('upgrades')}
           onSkins={() => setScreen('skins')}
+          onCampaign={() => setScreen('campaign')}
           onAdPoints={actions.addPoints}
           onClaimDaily={actions.claimDaily}
         />

@@ -10,19 +10,21 @@ import {
 } from '../engine/GameLoop';
 import { MISSILES } from '../engine/Weapons';
 import { renderFrame } from '../render/Renderer';
-import { computeReward } from '../state/Progress';
+import { computeRunReward, computeStars, REPLAY_REWARD_FACTOR, STAR_BONUS } from '../state/Progress';
 import { showRewardedAd } from '../services/Ads';
 import { ControlsOverlay } from './ControlsOverlay';
-import { GlassButton, Panel, SoundToggle } from './ui';
+import { GlassButton, Panel, SoundToggle, Stars } from './ui';
 import { buzz, initSounds, playMusic, playSound, type SoundType } from '../engine/SoundManager';
 
 interface Props {
   level: number;
   loadout: Loadout;
   bestScore: number;
+  isReplay: boolean;  // replaying an already cleared level
+  prevStars: number;  // best stars earned on this level so far
   showRatePrompt: boolean;
   onRatePromptShown: () => void;
-  onFinish: (won: boolean, reward: number, score: number) => void;
+  onFinish: (won: boolean, reward: number, score: number, stars: number) => void;
   onBonusPoints: (points: number) => void;
   onNext: () => void;
   onRetry: () => void;
@@ -35,6 +37,8 @@ interface Result {
   doubled: boolean;
   newBest: boolean;
   askRating: boolean;
+  stars: number;
+  starBonus: number;
 }
 
 const STORE_URL = 'market://details?id=com.planeshooter.planeshooter';
@@ -79,13 +83,16 @@ export const GameCanvas = (props: Props) => {
     finished.current = true;
     const s = gameState.current;
     const won = s.status === 'won';
-    const reward = computeReward(won, s.score, s.level);
+    const stars = won ? computeStars(s.hp / s.maxHp, continuesUsed.current) : 0;
+    const { isReplay, prevStars } = propsRef.current;
+    const reward = computeRunReward({ won, score: s.score, level: s.level, isReplay, stars, prevStars });
+    const starBonus = won ? Math.max(0, stars - prevStars) * STAR_BONUS : 0;
     setOfferContinue(false);
     // The rating nudge appears once, right after the first boss falls, when the player is happiest
     const askRating = won && s.config.isBoss && propsRef.current.showRatePrompt;
     if (askRating) propsRef.current.onRatePromptShown();
-    setResult({ won, reward, doubled: false, newBest: s.score > propsRef.current.bestScore, askRating });
-    propsRef.current.onFinish(won, reward, s.score);
+    setResult({ won, reward, doubled: false, newBest: s.score > propsRef.current.bestScore, askRating, stars, starBonus });
+    propsRef.current.onFinish(won, reward, s.score, stars);
     playMusic(null);
     if (won) {
       playSound('win');
@@ -368,8 +375,15 @@ export const GameCanvas = (props: Props) => {
               {result.won ? (cfg.isBoss ? 'BOSS DEFEATED!' : 'LEVEL COMPLETE') : 'MISSION FAILED'}
             </Text>
             <Text style={styles.stats}>LEVEL {s.level}  ·  SCORE {s.score}  ·  KILLS {s.kills}</Text>
+            {result.won && (
+              <View style={styles.resultStars}>
+                <Stars count={result.stars} size={30} />
+              </View>
+            )}
             {result.newBest && s.score > 0 && <Text style={styles.newBest}>★ NEW BEST SCORE ★</Text>}
             {s.bestCombo >= 5 && <Text style={styles.comboStat}>BEST COMBO  {s.bestCombo}</Text>}
+            {props.isReplay && <Text style={styles.replayNote}>REPLAY · {Math.round(REPLAY_REWARD_FACTOR * 100)}% POINTS</Text>}
+            {result.starBonus > 0 && <Text style={styles.replayNote}>NEW STAR BONUS  +{result.starBonus}</Text>}
             <View style={styles.rewardRow}>
               <Text style={styles.rewardStar}>★</Text>
               <Text style={styles.rewardValue}>+{result.reward}</Text>
@@ -399,6 +413,8 @@ export const GameCanvas = (props: Props) => {
 };
 
 const styles = StyleSheet.create({
+  resultStars: { alignItems: 'center', marginBottom: 6 },
+  replayNote: { color: 'rgba(255,255,255,0.7)', fontSize: 10, fontWeight: '900', letterSpacing: 2, textAlign: 'center', marginTop: 2 },
   popupLayer: { ...StyleSheet.absoluteFill, zIndex: 15 },
   popup: { position: 'absolute', width: 120, alignItems: 'center' },
   popupText: {

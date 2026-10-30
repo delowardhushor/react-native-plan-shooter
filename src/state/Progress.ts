@@ -15,6 +15,7 @@ export interface Progress {
   ratePrompted: boolean; // the store-rating nudge is only ever shown once
   skin: string;          // equipped jet livery
   skinAds: Record<string, number>; // rewarded ads watched toward each ad-locked skin
+  stars: Record<number, number>;   // best star rating (1-3) per cleared level
 }
 
 const KEY = 'planeshooter.progress.v1';
@@ -36,6 +37,7 @@ export const defaultProgress = (): Progress => ({
   ratePrompted: false,
   skin: DEFAULT_SKIN,
   skinAds: {},
+  stars: {},
 });
 
 export const loadProgress = async (): Promise<Progress> => {
@@ -48,6 +50,7 @@ export const loadProgress = async (): Promise<Progress> => {
       ...base,
       ...saved,
       skinAds: { ...saved.skinAds },
+      stars: { ...saved.stars },
       missiles: {
         homing: { ...base.missiles.homing, ...saved.missiles?.homing },
         blast: { ...base.missiles.blast, ...saved.missiles?.blast },
@@ -113,4 +116,35 @@ export const isSkinUnlocked = (p: Progress, skin: Skin) => {
 export const equippedSkin = (p: Progress) => {
   const skin = skinById(p.skin);
   return isSkinUnlocked(p, skin) ? skin : skinById(DEFAULT_SKIN);
+};
+
+// Campaign ------------------------------------------------------------------------------------------
+
+export const MAX_STARS = 3;
+
+// 3 stars for finishing with most of the hull left, 2 for about half, 1 otherwise;
+// a rewarded-ad continue caps the rating at 1
+export const computeStars = (hpRatio: number, continuesUsed: number) => {
+  if (continuesUsed > 0) return 1;
+  if (hpRatio >= 0.7) return 3;
+  if (hpRatio >= 0.35) return 2;
+  return 1;
+};
+
+// Levels below the frontier are cleared; saves from before stars existed count as 1 star
+export const starsFor = (p: Progress, level: number) => p.stars[level] ?? (level < p.level ? 1 : 0);
+
+export const isCleared = (p: Progress, level: number) => level < p.level;
+
+// Replaying a cleared level pays half, so grinding old levels is slower than pushing on;
+// every star above the previous best pays a one-off bonus
+export const REPLAY_REWARD_FACTOR = 0.5;
+export const STAR_BONUS = 15;
+
+export const computeRunReward = (o: {
+  won: boolean; score: number; level: number; isReplay: boolean; stars: number; prevStars: number;
+}) => {
+  const base = computeReward(o.won, o.score, o.level);
+  const reduced = o.isReplay ? Math.floor(base * REPLAY_REWARD_FACTOR) : base;
+  return reduced + (o.won ? Math.max(0, o.stars - o.prevStars) * STAR_BONUS : 0);
 };

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { COLOR_ACCENT, COLOR_TEXT } from '../engine/Constants';
 import { BOSS_DEFS, bossKindFor } from '../engine/Enemies';
 import { BOSS_EVERY, getLevelConfig, isBossLevel } from '../engine/Levels';
@@ -19,6 +19,7 @@ interface Props {
   onPlay: () => void;
   onUpgrades: () => void;
   onSkins: () => void;
+  onCampaign: () => void;
   onAdPoints: (points: number) => void;
   onClaimDaily: () => void;
 }
@@ -75,7 +76,7 @@ const Chip = ({ label, value }: { label: string; value: string }) => (
   </View>
 );
 
-export const MenuScreen = ({ progress, onPlay, onUpgrades, onSkins, onAdPoints, onClaimDaily }: Props) => {
+export const MenuScreen = ({ progress, onPlay, onUpgrades, onSkins, onCampaign, onAdPoints, onClaimDaily }: Props) => {
   const [, setTick] = useState(0);
   const daily = dailyStatus(progress);
   const showDaily = daily.claimable && dailyDismissedOn !== dayKey(new Date());
@@ -119,6 +120,7 @@ export const MenuScreen = ({ progress, onPlay, onUpgrades, onSkins, onAdPoints, 
           </View>
         </View>
         <View style={styles.headerRight}>
+          <GlassButton label="CAMPAIGN" small onPress={onCampaign} />
           <GlassButton label="SKINS" small onPress={onSkins} />
           <SoundToggle />
           <PointsPill points={progress.points} />
@@ -139,7 +141,9 @@ export const MenuScreen = ({ progress, onPlay, onUpgrades, onSkins, onAdPoints, 
             <Text style={styles.cardLabel}>LEVEL</Text>
             <Text style={styles.levelNumber}>{progress.level}</Text>
           </View>
-          <LevelPath level={progress.level} accent={accent} />
+          <TouchableOpacity activeOpacity={0.8} onPress={onCampaign}>
+            <LevelPath level={progress.level} accent={accent} />
+          </TouchableOpacity>
           {cfg.isBoss ? (
             <View style={styles.bossTag}>
               <Text style={styles.bossTagText}>BOSS · {boss.name}</Text>

@@ -75,6 +75,15 @@ export const Panel = ({ children, style, accent }: PanelProps) => {
   );
 };
 
+// Star rating, e.g. 2 of 3 lit
+export const Stars = ({ count, max = 3, size = 14 }: { count: number; max?: number; size?: number }) => (
+  <View style={styles.starsRow}>
+    {Array.from({ length: max }).map((_, i) => (
+      <Text key={i} style={[styles.star, { fontSize: size, lineHeight: size + 4 }, i < count && styles.starOn]}>★</Text>
+    ))}
+  </View>
+);
+
 export const PointsPill = ({ points }: { points: number }) => (
   <View style={styles.pill}>
     <View style={styles.coin}>
@@ -165,6 +174,9 @@ const styles = StyleSheet.create({
   coinStar: { color: '#8a4b00', fontSize: 16, fontWeight: '900', marginTop: -1 },
   pillText: { color: COLOR_TEXT, fontSize: 22, fontWeight: '900', letterSpacing: 1 },
   pillUnit: { color: COLOR_ACCENT, fontSize: 11, fontWeight: '900', letterSpacing: 2, alignSelf: 'flex-end', marginBottom: 4 },
+  starsRow: { flexDirection: 'row', gap: 2 },
+  star: { color: 'rgba(255,255,255,0.22)', fontWeight: '900' },
+  starOn: { color: COLOR_ACCENT },
   soundBtn: {
     width: 42,
     height: 42,
