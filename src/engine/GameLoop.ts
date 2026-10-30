@@ -112,6 +112,22 @@ export interface Loadout {
   missileLevel: number;
 }
 
+// Floating text that rises from where something happened (score gains, combo bonuses)
+export interface Popup {
+  x: number;
+  y: number;
+  text: string;
+  color: string;
+  life: number;
+  maxLife: number;
+  big: boolean;
+}
+
+// Kills within this many frames of each other keep the combo alive
+export const COMBO_WINDOW = 150;
+const MAX_POPUPS = 8;
+export const comboMultiplier = (combo: number) => Math.min(4, 1 + Math.floor(combo / 5));
+
 export type GameStatus = 'playing' | 'won' | 'lost';
 
 export interface GameState {
@@ -123,6 +139,7 @@ export interface GameState {
   boss: Boss | null;
   pickups: Pickup[];
   particles: Particle[];
+  popups: Popup[];
   config: LevelConfig;
   loadout: Loadout;
   frameCount: number;
@@ -143,11 +160,16 @@ export interface GameState {
   heal: number; // frames of heal glow remaining
   level: number;
   shake: number; // screen-shake intensity, decays every frame
+  combo: number; // consecutive kills without taking a hit or letting the timer run out
+  comboTimer: number;
+  bestCombo: number;
+  timeScale: number; // < 1 slows the simulation (boss defeat slow-motion)
+  flash: number; // white screen flash, 1 -> 0
   status: GameStatus;
   endTimer: number; // frames since the run ended
 }
 
-export type SoundFn = (type: 'shoot' | 'hit' | 'destroy') => void;
+export type SoundFn = (type: 'shoot' | 'hit' | 'destroy' | 'hurt' | 'pickup' | 'warning') => void;
 
 const GROUND_Y = SCREEN_HEIGHT - GROUND_HEIGHT;
 
@@ -173,6 +195,7 @@ export const createInitialState = (level: number, loadout: Loadout): GameState =
     boss: null,
     pickups: [],
     particles: [],
+    popups: [],
     config,
     loadout,
     frameCount: 0,
@@ -196,6 +219,11 @@ export const createInitialState = (level: number, loadout: Loadout): GameState =
     heal: 0,
     level,
     shake: 0,
+    combo: 0,
+    comboTimer: 0,
+    bestCombo: 0,
+    timeScale: 1,
+    flash: 0,
     status: 'playing',
     endTimer: 0,
   };
@@ -217,6 +245,12 @@ const emit = (
 ) => {
   if (gameState.particles.length >= MAX_PARTICLES) return;
   gameState.particles.push({ kind, x, y, vx, vy, life, maxLife: life, size });
+};
+
+const addPopup = (s: GameState, x: number, y: number, text: string, color: string, big = false) => {
+  if (s.popups.length >= MAX_POPUPS) s.popups.shift();
+  const life = big ? 70 : 45;
+  s.popups.push({ x, y, text, color, life, maxLife: life, big });
 };
 
 // Layered explosion: flash + shockwave ring + fireball + sparks + rising smoke
@@ -262,6 +296,13 @@ const updateEffects = (gameState: GameState) => {
   gameState.particles = gameState.particles.filter(p => p.life > 0);
   if (gameState.hurt > 0) gameState.hurt -= 1;
   if (gameState.heal > 0) gameState.heal -= 1;
+  gameState.popups.forEach(p => {
+    p.life -= 1;
+    p.y -= 0.7;
+  });
+  gameState.popups = gameState.popups.filter(p => p.life > 0);
+  if (gameState.flash > 0) gameState.flash = Math.max(0, gameState.flash - 0.05);
+
   gameState.shake *= 0.88;
   if (gameState.shake < 0.3) gameState.shake = 0;
 };
@@ -309,6 +350,7 @@ const hurtPlayer = (s: GameState, amount: number, onSound: SoundFn) => {
   const { plane } = s;
   s.hp = Math.max(0, s.hp - amount);
   s.hurt = 18;
+  s.combo = 0;
   const cx = plane.x + plane.width / 2;
   const cy = plane.y + plane.height / 2;
 
@@ -316,11 +358,12 @@ const hurtPlayer = (s: GameState, amount: number, onSound: SoundFn) => {
     plane.invulnerable = HIT_INVULNERABLE_FRAMES;
     spawnExplosion(s, cx, cy, 0.5);
     s.shake = Math.max(s.shake, 9);
-    onSound('hit');
+    onSound('hurt');
     return;
   }
 
   spawnExplosion(s, cx, cy, 1.6);
+  onSound('hurt');
   onSound('destroy');
   s.shake = 14;
   plane.alive = false;
@@ -625,6 +668,7 @@ const updateBoss = (s: GameState, onSound: SoundFn) => {
     // Defeat sequence: it sinks while a chain of explosions rips it apart
     boss.dying += 1;
     boss.y += 0.5;
+    if (boss.dying === 55) s.timeScale = 0.4;
     if (boss.dying % 7 === 0) {
       spawnExplosion(s, boss.x + rand(0.1, 0.9) * boss.width, boss.y + rand(0.1, 0.9) * boss.height, 1.2);
       onSound('destroy');
@@ -633,6 +677,7 @@ const updateBoss = (s: GameState, onSound: SoundFn) => {
     if (boss.dying >= 100) {
       spawnExplosion(s, boss.x + boss.width / 2, boss.y + boss.height / 2, 3);
       s.shake = 22;
+      s.flash = 1;
       s.boss = null;
       winLevel(s);
     }
@@ -889,8 +934,14 @@ const reapEnemies = (s: GameState, onSound: SoundFn) => {
     spawnExplosion(s, e.x + e.width / 2, e.y + e.height / 2, def.boom);
     if (def.boom > 1.2) s.shake = Math.max(s.shake, 4 + def.boom * 2);
     onSound('destroy');
-    s.score += def.score;
+    s.combo += 1;
+    s.comboTimer = COMBO_WINDOW;
+    s.bestCombo = Math.max(s.bestCombo, s.combo);
+    const mult = comboMultiplier(s.combo);
+    const points = def.score * mult;
+    s.score += points;
     s.kills += 1;
+    addPopup(s, e.x + e.width / 2, e.y, mult > 1 ? `+${points} x${mult}` : `+${points}`, mult > 1 ? '#ffb23e' : '#ffffff');
     s.enemies.splice(i, 1);
   }
 
@@ -898,6 +949,7 @@ const reapEnemies = (s: GameState, onSound: SoundFn) => {
   if (boss && boss.dying === 0 && boss.hp <= 0) {
     boss.dying = 1;
     s.score += 500;
+    addPopup(s, boss.x + boss.width / 2, boss.y, '+500', '#ffb23e', true);
     s.enemyBullets = [];
     s.enemies.forEach(e => { e.hp = 0; });
     setBanner(s, 'BOSS DOWN', '', 100);
@@ -934,7 +986,7 @@ const resolvePlayerHits = (s: GameState, onSound: SoundFn) => {
 };
 
 // Medic kits drift in from the left at random heights; one appears every so often while the hull is damaged
-const updatePickups = (s: GameState) => {
+const updatePickups = (s: GameState, onSound: SoundFn) => {
   const { plane } = s;
 
   s.pickupTimer -= 1;
@@ -960,6 +1012,7 @@ const updatePickups = (s: GameState) => {
       if (!isRectCollision(plane, p)) continue;
       s.hp = Math.min(s.maxHp, s.hp + medicHeal(s.maxHp));
       s.heal = 40;
+      onSound('pickup');
       emit(s, 'flash', p.x + p.width / 2, p.y + p.height / 2, 0, 0, 10, 34);
       emit(s, 'ring', plane.x + plane.width / 2, plane.y + plane.height / 2, 0, 0, 20, 50);
       s.pickups.splice(i, 1);
@@ -973,11 +1026,13 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
   if (s.status !== 'playing') {
     // Let the explosions play out while the result screen waits
     s.endTimer += 1;
+    s.timeScale = 1;
     updateEffects(s);
     return;
   }
 
   s.frameCount += 1;
+  if (s.comboTimer > 0 && --s.comboTimer === 0) s.combo = 0;
   if (s.bannerTimer > 0) s.bannerTimer -= 1;
 
   const { plane, config } = s;
@@ -1043,6 +1098,7 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
     s.bossState = 1;
     s.bossTimer = 130;
     setBanner(s, 'WARNING', `${BOSS_DEFS[bossKindFor(config.bossIndex)].name} APPROACHING`, 130);
+    onSound('warning');
   }
   if (s.bossState === 1) {
     s.bossTimer -= 1;
@@ -1069,7 +1125,7 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
   s.enemies = s.enemies.filter(e => e.x + e.width > 0);
 
   updateBoss(s, onSound);
-  updatePickups(s);
+  updatePickups(s, onSound);
 
   resolveShots(s, onSound);
   reapEnemies(s, onSound);

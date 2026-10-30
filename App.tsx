@@ -4,12 +4,13 @@ import { GameCanvas } from './src/components/GameCanvas';
 import { MenuScreen } from './src/components/MenuScreen';
 import { UpgradeScreen, type UpgradeActions } from './src/components/UpgradeScreen';
 import { initAds } from './src/services/Ads';
+import { initSounds, playMusic } from './src/engine/SoundManager';
 import type { Loadout } from './src/engine/GameLoop';
 import { MAX_ARMOR_LEVEL, armorMaxHp, armorUpgradeCost } from './src/engine/Armor';
 import {
   MAX_CANNON_LEVEL, MAX_MISSILE_LEVEL, MISSILES, cannonUpgradeCost, missileUpgradeCost, type MissileType,
 } from './src/engine/Weapons';
-import { loadProgress, saveProgress, type Progress } from './src/state/Progress';
+import { claimDaily, loadProgress, saveProgress, type Progress } from './src/state/Progress';
 
 type Screen = 'menu' | 'upgrades' | 'game';
 
@@ -17,6 +18,7 @@ interface Run {
   id: number;
   level: number;
   loadout: Loadout;
+  bestScore: number; // best score when the run began, so the result card can flag a new record
 }
 
 const loadoutOf = (p: Progress): Loadout => ({
@@ -34,7 +36,12 @@ const App = () => {
   useEffect(() => {
     loadProgress().then(setProgress);
     initAds();
+    initSounds();
   }, []);
+
+  useEffect(() => {
+    if (screen !== 'game') playMusic('menu');
+  }, [screen]);
 
   const update = useCallback((fn: (p: Progress) => Progress) => {
     setProgress(prev => {
@@ -47,11 +54,13 @@ const App = () => {
 
   const startRun = (level: number) => {
     if (!progress) return;
-    setRun(r => ({ id: (r?.id ?? 0) + 1, level, loadout: loadoutOf(progress) }));
+    setRun(r => ({ id: (r?.id ?? 0) + 1, level, loadout: loadoutOf(progress), bestScore: progress.bestScore }));
     setScreen('game');
   };
 
-  const actions: UpgradeActions = {
+  const actions: UpgradeActions & { claimDaily: () => void; markRatePrompted: () => void } = {
+    claimDaily: () => update(p => claimDaily(p)),
+    markRatePrompted: () => update(p => (p.ratePrompted ? p : { ...p, ratePrompted: true })),
     addPoints: points => update(p => ({ ...p, points: p.points + points })),
     upgradeArmor: () =>
       update(p => {
@@ -95,10 +104,14 @@ const App = () => {
           key={run.id}
           level={run.level}
           loadout={run.loadout}
-          onFinish={(won, reward) =>
+          bestScore={run.bestScore}
+          showRatePrompt={!progress.ratePrompted}
+          onRatePromptShown={actions.markRatePrompted}
+          onFinish={(won, reward, score) =>
             update(p => ({
               ...p,
               points: p.points + reward,
+              bestScore: Math.max(p.bestScore, score),
               // Only advance when the player beat their frontier level
               level: won && run.level === p.level ? p.level + 1 : p.level,
             }))
@@ -118,6 +131,7 @@ const App = () => {
           onPlay={() => startRun(progress.level)}
           onUpgrades={() => setScreen('upgrades')}
           onAdPoints={actions.addPoints}
+          onClaimDaily={actions.claimDaily}
         />
       );
     }

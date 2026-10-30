@@ -23,12 +23,6 @@ interface JetPalette {
   accent: string;
 }
 
-const PLAYER_PALETTE: JetPalette = {
-  bodyTop: '#e6edf3', bodyMid: '#9fb0be', bodyLow: '#56646f',
-  wingNear: ['#c3cfd9', '#5f6e7b'], wingFar: '#46525d', fin: '#d3dde6',
-  canopy: ['#dff4ff', '#2a6cab'], accent: '#e23b2e',
-};
-
 const ENEMY_PALETTE: JetPalette = {
   bodyTop: '#8d939e', bodyMid: '#585d69', bodyLow: '#2b2e36',
   wingNear: ['#6d7280', '#2d3037'], wingFar: '#1f2227', fin: '#6a6f7b',
@@ -88,6 +82,94 @@ const drawJet = (c: SkCanvas, pal: JetPalette) => {
   // Spine highlight + exhaust nozzle
   c.drawLine(12, 9.9, 36, 9.7, strokePaint('rgba(255,255,255,0.45)', 0.8));
   c.drawRRect(Skia.RRectXY(Skia.XYWHRect(2.2, 11, 2.8, 4.8), 0.8, 0.8), fillPaint('#1d2228'));
+};
+
+// The player's own jet: cobalt and white with gold trim, so it never reads as a recoloured enemy.
+// It evolves with the cannon level: wing cannons from tier 3, gold-plated nose and wingtip lights from tier 5.
+export const HERO_TIERS = 5;
+
+const HERO = {
+  bodyTop: '#f6f9ff', bodyMid: '#4a86dc', bodyLow: '#16336a',
+  wingNear: ['#8bb8f7', '#1e4690'] as [string, string], wingFar: '#17305f',
+  canopy: ['#d4f8ff', '#1a6fd6'] as [string, string],
+};
+
+const drawHero = (c: SkCanvas, tier: number) => {
+  const gold = tier >= 5 ? '#ffd35a' : '#ffb23e';
+
+  // Far-side surfaces and the second (far) tail fin
+  c.drawPath(poly([[37, 11], [28, 3.2], [22, 3.2], [25, 11]]), fillPaint(HERO.wingFar));
+  c.drawPath(poly([[10, 11], [5.5, 6.2], [2, 6.2], [5, 11]]), fillPaint(HERO.wingFar));
+  c.drawPath(poly([[22, 9.8], [14.5, 1.8], [10.5, 1.8], [13, 10]]), fillPaint('#1d3c75'));
+
+  // Main tail fin with a gold flash
+  c.drawPath(poly([[19, 9.8], [9, 0.4], [3.2, 0.4], [6.5, 10.2]]), shaderPaint(linear(0, 0, 0, 10, ['#eef4ff', '#5f93e0'])));
+  c.drawPath(poly([[8.8, 1.8], [4.6, 1.8], [5.9, 5.8], [10.3, 5.8]]), fillPaint(gold));
+
+  // Fuselage: white back fading to a deep blue belly
+  const body = Skia.PathBuilder.Make();
+  body.moveTo(56, 14);
+  body.cubicTo(51, 11, 45, 9.4, 36, 9.1);
+  body.lineTo(9, 9.4);
+  body.lineTo(3.5, 11);
+  body.lineTo(3.5, 16.2);
+  body.lineTo(9, 17.8);
+  body.lineTo(36, 18);
+  body.cubicTo(45, 18, 51, 16.6, 56, 14);
+  body.close();
+  c.drawPath(body.build(), shaderPaint(linear(0, 9, 0, 18, [HERO.bodyTop, HERO.bodyMid, HERO.bodyLow], [0, 0.5, 1])));
+
+  // Gold racing stripe with a pale line under it
+  c.drawLine(7.5, 12.7, 39, 12.3, strokePaint(gold, 1.2));
+  c.drawLine(7.5, 13.7, 36, 13.3, strokePaint('rgba(255,255,255,0.45)', 0.5));
+
+  // Panel lines, intake, radome and emblem
+  const lines = strokePaint('rgba(0,0,0,0.22)', 0.6);
+  c.drawLine(22, 9.6, 22, 17.8, lines);
+  c.drawLine(31, 9.3, 31, 18, lines);
+  c.drawPath(poly([[34, 13.9], [41, 14.2], [41, 17.7], [34, 17.9]]), fillPaint('rgba(5,10,30,0.55)'));
+  c.drawLine(34, 14, 41, 14.3, strokePaint('rgba(255,255,255,0.5)', 0.5));
+  c.drawPath(poly([[52.2, 12.4], [56, 14], [52.2, 15.7]]), fillPaint(tier >= 5 ? gold : 'rgba(22,30,50,0.9)'));
+  c.drawCircle(27, 15.4, 1.8, fillPaint('#0f2a5c'));
+  c.drawCircle(27, 15.4, 1.1, fillPaint(gold));
+  c.drawCircle(27, 15.4, 0.4, fillPaint('#ffffff'));
+
+  // Near wing and tailplane, lit from above, with a gold leading edge
+  c.drawPath(poly([[39, 15.5], [27.5, 25.6], [19, 25.6], [23, 15.5]]), shaderPaint(linear(0, 15.5, 0, 25.6, HERO.wingNear)));
+  c.drawLine(39, 15.5, 27.5, 25.6, strokePaint(gold, tier >= 2 ? 1.1 : 0.8));
+  c.drawLine(31, 17.5, 22.5, 24.8, strokePaint('rgba(255,255,255,0.22)', 0.6));
+  c.drawPath(poly([[11.5, 14.6], [5.5, 19.8], [1.5, 19.8], [5, 14.6]]), shaderPaint(linear(0, 14.6, 0, 19.8, HERO.wingNear)));
+
+  // Wing cannons poke out ahead of the near wing from tier 3
+  if (tier >= 3) {
+    c.drawRRect(Skia.RRectXY(Skia.XYWHRect(27, 20.3, 12, 1.7), 0.8, 0.8), fillPaint('#1b2740'));
+    c.drawRRect(Skia.RRectXY(Skia.XYWHRect(36.5, 20.1, 3.2, 2.1), 0.6, 0.6), fillPaint(gold));
+  }
+
+  // Canopy with a glint
+  const canopy = Skia.PathBuilder.Make();
+  canopy.moveTo(39.5, 9.5);
+  canopy.cubicTo(41, 5.4, 47, 6, 51, 10.8);
+  canopy.lineTo(51, 11);
+  canopy.lineTo(39.5, 10.2);
+  canopy.close();
+  c.drawPath(canopy.build(), shaderPaint(linear(0, 5.6, 0, 10.6, HERO.canopy)));
+  c.drawLine(45.2, 6.6, 45.4, 10.4, strokePaint('rgba(10,30,70,0.5)', 0.6));
+  const glint = Skia.PathBuilder.Make();
+  glint.moveTo(41.6, 8.6);
+  glint.quadTo(44.4, 6.3, 47.8, 8.2);
+  c.drawPath(glint.build(), strokePaint('rgba(255,255,255,0.85)', 0.9));
+
+  // Spine highlight and a hot exhaust nozzle
+  c.drawLine(12, 9.9, 36, 9.7, strokePaint('rgba(255,255,255,0.6)', 0.8));
+  c.drawRRect(Skia.RRectXY(Skia.XYWHRect(2.2, 11, 2.8, 4.8), 0.8, 0.8), fillPaint('#1d2228'));
+  c.drawCircle(2.9, 13.4, 1.1, fillPaint('#ff9a4a'));
+
+  // Navigation lights on the wingtips for the top tier
+  if (tier >= 5) {
+    c.drawCircle(19.8, 25, 0.9, fillPaint('#ff5a4a'));
+    c.drawCircle(22.6, 3.4, 0.9, fillPaint('#5aff9a'));
+  }
 };
 
 interface GunshipPalette {
@@ -464,7 +546,7 @@ const hexAlpha = (hex: string, a: number) => {
 };
 
 export interface Sprites {
-  player: SkPicture;
+  heroes: SkPicture[]; // index = cannon level - 1
   enemies: Record<EnemyType, SkPicture>;
   bosses: SkPicture[];
   missiles: Record<MissileType, SkPicture>;
@@ -517,7 +599,7 @@ export const getSprites = (): Sprites => {
   const smoke = SMOKE_RAMP.map(col => glowImage(32, [hexAlpha(col, 0.7), hexAlpha(col, 0.4), hexAlpha(col, 0)], [0, 0.5, 1]));
 
   cache = {
-    player: record(JET_FRAME.width, JET_FRAME.height, c => drawJet(c, PLAYER_PALETTE)),
+    heroes: Array.from({ length: HERO_TIERS }, (_, i) => record(JET_FRAME.width, JET_FRAME.height, c => drawHero(c, i + 1))),
     enemies: {
       [EnemyType.STANDARD]: record(JET_FRAME.width, JET_FRAME.height, c => drawJet(c, ENEMY_PALETTE)),
       [EnemyType.ROAMER]: record(GUNSHIP_FRAME.width, GUNSHIP_FRAME.height, c => drawGunship(c, GUNSHIP_PALETTE)),

@@ -4,7 +4,7 @@ import { Canvas, Picture } from '@shopify/react-native-skia';
 import { renderMenuFrame } from '../render/Renderer';
 
 // Animated sky + cruising jet shown behind the menu screens
-export const MenuBackdrop = () => {
+export const MenuBackdrop = ({ level = 1, cannon = 1 }: { level?: number; cannon?: number }) => {
   const frame = useRef(0);
   const raf = useRef(0);
   const last = useRef(0);
@@ -27,7 +27,7 @@ export const MenuBackdrop = () => {
 
   return (
     <Canvas style={StyleSheet.absoluteFill}>
-      <Picture picture={renderMenuFrame(frame.current)} />
+      <Picture picture={renderMenuFrame(frame.current, level, cannon)} />
     </Canvas>
   );
 };
