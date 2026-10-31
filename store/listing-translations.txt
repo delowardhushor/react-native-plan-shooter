@@ -4,273 +4,429 @@ Limits: title 30 characters, short description 80, full description 4000.
 
 === en-US ===
 TITLE:
-Plane Shooter
+Plane Shooter: Sky Fighter
 
 SHORT DESCRIPTION:
-Blast enemy planes, beat giant bosses and upgrade your fighter jet.
+Epic air combat: 5 worlds, giant bosses, jet skins. Free and plays offline.
 
 FULL DESCRIPTION:
-Take to the skies in Plane Shooter, a fast arcade shooter played in landscape. Dodge enemy fire, blast waves of enemy planes and take down giant bosses.
+Take to the skies in Plane Shooter, a fast arcade shooter played in landscape. Dodge enemy fire, chain kills into big combos and take down giant bosses.
 
-FEATURES
-• Simple touch controls built for landscape play
-• New enemy planes appear as you progress: snipers, rushers, bombers and more
-• A giant boss every third level, each with its own deadly weapon
-• Upgrade your armor and cannon between missions
-• Unlock special weapons: homing missiles, explosive blasts and a piercing lance
+CAMPAIGN
+• Fly through chapters across 5 worlds: clear skies, sunset, midnight, storm and arctic
+• Earn 1-3 stars on every level and replay cleared levels to improve your rating
+• A giant boss ends each chapter, and they return stronger as Mk II, Mk III and beyond
+
+ENEMIES
+• 9 enemy types: snipers, rushers, bombers, shielded fighters, drone swarms, mine layers and more
+• New threats keep arriving and the difficulty never stops climbing
+
+UPGRADES AND JETS
+• Upgrade your armor and cannon, up to a triple spread shot
+• Unlock homing missiles, explosive blasts and a piercing lance
+• Collect jet skins; your fighter evolves as you upgrade
+
+EXTRAS
+• Combo multipliers and a slow-motion boss finish
+• Daily rewards with a login streak
+• Simple touch controls and an arcade soundtrack
 • Play offline, no internet connection needed to fly
-• Free to play, with optional rewarded ads for bonus points
+• Free to play, with optional rewarded ads for bonus points and skins
 
 Ready for takeoff, pilot?
 
 === es-ES ===
 TITLE:
-Plane Shooter
+Plane Shooter: Sky Fighter
 
 SHORT DESCRIPTION:
-Destruye aviones enemigos, vence a jefes gigantes y mejora tu caza.
+Combate aéreo épico: 5 mundos, jefes gigantes y skins. Gratis y sin conexión.
 
 FULL DESCRIPTION:
-Surca los cielos en Plane Shooter, un rápido juego de disparos arcade en horizontal. Esquiva el fuego enemigo, derriba oleadas de aviones y acaba con jefes gigantes.
+Surca los cielos en Plane Shooter, un rápido juego de disparos arcade en horizontal. Esquiva el fuego enemigo, encadena derribos en grandes combos y acaba con jefes gigantes.
 
-CARACTERÍSTICAS
-• Controles táctiles sencillos pensados para jugar en horizontal
-• Nuevos aviones enemigos según avanzas: francotiradores, kamikazes, bombarderos y más
-• Un jefe gigante cada tres niveles, cada uno con su propia arma mortal
-• Mejora tu armadura y tu cañón entre misiones
-• Desbloquea armas especiales: misiles teledirigidos, explosiones y una lanza perforante
+CAMPAÑA
+• Recorre capítulos en 5 mundos: cielo despejado, atardecer, noche, tormenta y ártico
+• Consigue de 1 a 3 estrellas en cada nivel y repite los niveles superados para mejorar tu nota
+• Un jefe gigante cierra cada capítulo y vuelve más fuerte como Mk II, Mk III y más allá
+
+ENEMIGOS
+• 9 tipos de enemigos: francotiradores, kamikazes, bombarderos, cazas con escudo, enjambres de drones, colocaminas y más
+• Siguen llegando nuevas amenazas y la dificultad no deja de subir
+
+MEJORAS Y CAZAS
+• Mejora tu armadura y tu cañón hasta el disparo triple
+• Desbloquea misiles teledirigidos, explosiones y una lanza perforante
+• Colecciona skins de caza; tu avión evoluciona al mejorarlo
+
+EXTRAS
+• Multiplicadores de combo y un final de jefe en cámara lenta
+• Recompensas diarias con racha de conexión
+• Controles táctiles sencillos y banda sonora arcade
 • Juega sin conexión, no necesitas internet para volar
-• Gratis, con anuncios opcionales con recompensa para ganar puntos extra
+• Gratis, con anuncios opcionales con recompensa para ganar puntos extra y skins
 
 ¿Listo para despegar, piloto?
 
 === pt-BR ===
 TITLE:
-Plane Shooter
+Plane Shooter: Sky Fighter
 
 SHORT DESCRIPTION:
-Destrua aviões inimigos, vença chefes gigantes e melhore seu caça.
+Combate aéreo épico: 5 mundos, chefes gigantes e skins. Grátis e offline.
 
 FULL DESCRIPTION:
-Voe nos céus em Plane Shooter, um jogo de tiro arcade rápido em modo paisagem. Desvie dos tiros inimigos, derrube ondas de aviões e acabe com chefes gigantes.
+Voe nos céus em Plane Shooter, um jogo de tiro arcade rápido em modo paisagem. Desvie dos tiros inimigos, encadeie abates em grandes combos e derrube chefes gigantes.
 
-RECURSOS
-• Controles de toque simples feitos para jogar na horizontal
-• Novos aviões inimigos conforme você avança: atiradores, kamikazes, bombardeiros e mais
-• Um chefe gigante a cada três fases, cada um com sua própria arma mortal
-• Melhore sua armadura e seu canhão entre as missões
-• Desbloqueie armas especiais: mísseis teleguiados, explosões e uma lança perfurante
-• Jogue offline, sem precisar de internet para voar
-• Grátis, com anúncios premiados opcionais para ganhar pontos extras
+CAMPANHA
+• Atravesse capítulos em 5 mundos: céu limpo, pôr do sol, noite, tempestade e ártico
+• Ganhe de 1 a 3 estrelas em cada fase e repita as fases concluídas para melhorar sua nota
+• Um chefe gigante encerra cada capítulo e volta mais forte como Mk II, Mk III e além
+
+INIMIGOS
+• 9 tipos de inimigos: atiradores, kamikazes, bombardeiros, caças com escudo, enxames de drones, lançadores de minas e mais
+• Novas ameaças não param de chegar e a dificuldade só aumenta
+
+UPGRADES E CAÇAS
+• Melhore sua blindagem e seu canhão até o tiro triplo
+• Desbloqueie mísseis teleguiados, explosões e uma lança perfurante
+• Colecione skins de caça; seu avião evolui conforme você melhora
+
+EXTRAS
+• Multiplicadores de combo e um final de chefe em câmera lenta
+• Recompensas diárias com sequência de login
+• Controles de toque simples e trilha sonora arcade
+• Jogue offline, não precisa de internet para voar
+• Grátis, com anúncios opcionais com recompensa para ganhar pontos extras e skins
 
 Pronto para decolar, piloto?
 
 === fr-FR ===
 TITLE:
-Plane Shooter
+Plane Shooter: Sky Fighter
 
 SHORT DESCRIPTION:
-Abattez des avions ennemis, battez des boss géants et améliorez votre chasseur.
+Combats aériens épiques : 5 mondes, boss géants, skins. Gratuit, hors ligne.
 
 FULL DESCRIPTION:
-Prenez les airs dans Plane Shooter, un shooter d'arcade rapide en mode paysage. Esquivez les tirs ennemis, abattez des vagues d'avions et terrassez des boss géants.
+Prenez les airs dans Plane Shooter, un shooter d'arcade rapide en mode paysage. Esquivez les tirs ennemis, enchaînez les victoires en gros combos et abattez des boss géants.
 
-CARACTÉRISTIQUES
-• Des commandes tactiles simples, conçues pour jouer en mode paysage
-• De nouveaux avions ennemis au fil de la progression : tireurs d'élite, kamikazes, bombardiers et plus encore
-• Un boss géant tous les trois niveaux, chacun avec sa propre arme mortelle
-• Améliorez votre blindage et votre canon entre les missions
-• Débloquez des armes spéciales : missiles à tête chercheuse, explosions et lance perforante
-• Jouez hors ligne, aucune connexion Internet n'est nécessaire pour voler
-• Gratuit, avec des publicités avec récompense facultatives pour gagner des points bonus
+CAMPAGNE
+• Traversez des chapitres dans 5 mondes : ciel dégagé, coucher de soleil, nuit, tempête et arctique
+• Obtenez de 1 à 3 étoiles par niveau et rejouez les niveaux terminés pour améliorer votre note
+• Un boss géant clôt chaque chapitre et revient plus fort en Mk II, Mk III et au-delà
+
+ENNEMIS
+• 9 types d'ennemis : tireurs d'élite, kamikazes, bombardiers, chasseurs à bouclier, essaims de drones, poseurs de mines et plus
+• De nouvelles menaces arrivent sans cesse et la difficulté ne cesse de monter
+
+AMÉLIORATIONS ET AVIONS
+• Améliorez votre blindage et votre canon jusqu'au tir triple
+• Débloquez des missiles à tête chercheuse, des explosions et une lance perforante
+• Collectionnez des skins d'avion ; votre chasseur évolue au fil des améliorations
+
+EXTRAS
+• Multiplicateurs de combo et fin de boss au ralenti
+• Récompenses quotidiennes avec série de connexions
+• Commandes tactiles simples et bande-son arcade
+• Jouez hors ligne, aucune connexion nécessaire pour voler
+• Gratuit, avec des publicités optionnelles avec récompense pour gagner des points bonus et des skins
 
 Prêt au décollage, pilote ?
 
 === de-DE ===
 TITLE:
-Plane Shooter
+Plane Shooter: Sky Fighter
 
 SHORT DESCRIPTION:
-Schieße feindliche Flugzeuge ab, besiege Riesenbosse und rüste deinen Jet auf.
+Epische Luftkämpfe: 5 Welten, Riesenbosse, Jet-Skins. Gratis und offline.
 
 FULL DESCRIPTION:
-Erobere den Himmel in Plane Shooter, einem schnellen Arcade-Shooter im Querformat. Weiche feindlichem Feuer aus, schieße Wellen von Flugzeugen ab und besiege riesige Bossgegner.
+Heb ab in die Lüfte mit Plane Shooter, einem schnellen Arcade-Shooter im Querformat. Weiche feindlichem Feuer aus, verkette Abschüsse zu großen Combos und besiege Riesenbosse.
 
-FEATURES
-• Einfache Touch-Steuerung für das Spielen im Querformat
-• Neue gegnerische Flugzeuge im Spielverlauf: Scharfschützen, Rammer, Bomber und mehr
-• Alle drei Level ein Riesenboss mit eigener tödlicher Waffe
-• Verbessere zwischen den Missionen deine Panzerung und deine Kanone
-• Schalte Spezialwaffen frei: Lenkraketen, Explosionen und eine durchschlagende Lanze
-• Offline spielbar, zum Fliegen ist keine Internetverbindung nötig
-• Kostenlos, mit optionaler Werbung mit Belohnung für Bonuspunkte
+KAMPAGNE
+• Fliege durch Kapitel in 5 Welten: klarer Himmel, Sonnenuntergang, Nacht, Sturmfront und Arktis
+• Sammle 1 bis 3 Sterne pro Level und spiele abgeschlossene Level erneut, um deine Wertung zu verbessern
+• Ein Riesenboss beendet jedes Kapitel und kehrt stärker zurück als Mk II, Mk III und darüber hinaus
 
-Bereit zum Abheben, Pilot?
+GEGNER
+• 9 Gegnertypen: Scharfschützen, Rammer, Bomber, Jäger mit Schutzschild, Drohnenschwärme, Minenleger und mehr
+• Immer neue Gegner tauchen auf und der Schwierigkeitsgrad steigt stetig
+
+UPGRADES UND JETS
+• Rüste Panzerung und Kanone auf, bis hin zum Dreifachschuss
+• Schalte Lenkraketen, Explosionen und eine durchschlagende Lanze frei
+• Sammle Jet-Skins; dein Jäger entwickelt sich mit jedem Upgrade weiter
+
+EXTRAS
+• Combo-Multiplikatoren und ein Boss-Finale in Zeitlupe
+• Tägliche Belohnungen mit Login-Serie
+• Einfache Touch-Steuerung und Arcade-Soundtrack
+• Offline spielbar, keine Internetverbindung nötig
+• Kostenlos, mit optionaler Belohnungswerbung für Bonuspunkte und Skins
+
+Bereit zum Start, Pilot?
 
 === ru-RU ===
 TITLE:
-Plane Shooter
+Plane Shooter: Sky Fighter
 
 SHORT DESCRIPTION:
-Сбивайте вражеские самолёты, побеждайте огромных боссов и улучшайте истребитель.
+Эпичные воздушные бои: 5 миров, гигантские боссы, скины. Бесплатно, офлайн.
 
 FULL DESCRIPTION:
-Взмойте в небо в Plane Shooter — динамичном аркадном шутере в горизонтальной ориентации. Уворачивайтесь от вражеского огня, сбивайте волны самолётов и побеждайте огромных боссов.
+Взмывайте в небо в Plane Shooter — динамичном аркадном шутере в горизонтальной ориентации. Уворачивайтесь от огня, собирайте комбо и сбивайте гигантских боссов.
 
-ОСОБЕННОСТИ
-• Простое сенсорное управление для игры в горизонтальной ориентации
-• По мере прохождения появляются новые вражеские самолёты: снайперы, таранщики, бомбардировщики и другие
-• Огромный босс каждые три уровня, и у каждого своё смертоносное оружие
-• Улучшайте броню и пушку между миссиями
-• Открывайте особое оружие: самонаводящиеся ракеты, взрывные снаряды и пробивающее копьё
-• Играйте офлайн — для полёта не нужен интернет
-• Бесплатно, с необязательной рекламой за награду, дающей бонусные очки
+КАМПАНИЯ
+• Проходите главы в 5 мирах: ясное небо, закат, ночь, шторм и арктика
+• Получайте от 1 до 3 звёзд за каждый уровень и переигрывайте пройденные уровни, чтобы улучшить результат
+• Каждую главу завершает гигантский босс, который возвращается сильнее как Mk II, Mk III и далее
 
-Готовы к взлёту, пилот?
+ВРАГИ
+• 9 типов врагов: снайперы, таранщики, бомбардировщики, истребители с щитом, рои дронов, минные заградители и другие
+• Новые угрозы появляются постоянно, а сложность всё растёт
+
+УЛУЧШЕНИЯ И САМОЛЁТЫ
+• Улучшайте броню и пушку вплоть до тройного залпа
+• Открывайте самонаводящиеся ракеты, взрывные снаряды и пробивающее копьё
+• Собирайте скины самолёта: ваш истребитель развивается вместе с улучшениями
+
+ДОПОЛНИТЕЛЬНО
+• Множители комбо и финал босса в замедленной съёмке
+• Ежедневные награды с серией входов
+• Простое сенсорное управление и аркадный саундтрек
+• Играйте офлайн, интернет для полёта не нужен
+• Бесплатно, с необязательной рекламой за награду: бонусные очки и скины
+
+К взлёту готовы, пилот?
 
 === id ===
 TITLE:
-Plane Shooter
+Plane Shooter: Sky Fighter
 
 SHORT DESCRIPTION:
-Tembak pesawat musuh, kalahkan bos raksasa, dan tingkatkan jet tempurmu.
+Pertempuran udara seru: 5 dunia, bos raksasa, skin jet. Gratis dan offline.
 
 FULL DESCRIPTION:
-Terbanglah di langit bersama Plane Shooter, game tembak-menembak arcade yang cepat dengan tampilan lanskap. Hindari tembakan musuh, hancurkan gelombang pesawat, dan kalahkan bos raksasa.
+Terbanglah di Plane Shooter, game tembak-menembak arcade cepat dalam mode lanskap. Hindari tembakan musuh, rangkai kemenangan jadi combo besar, dan tumbangkan bos raksasa.
 
-FITUR
-• Kontrol sentuh sederhana yang dibuat untuk mode lanskap
-• Pesawat musuh baru muncul seiring kemajuanmu: penembak jitu, penyeruduk, pembom, dan lainnya
-• Bos raksasa di setiap tiga level, masing-masing dengan senjata mematikan sendiri
-• Tingkatkan armor dan meriammu di antara misi
-• Buka senjata khusus: rudal pengejar, ledakan, dan tombak penembus
+KAMPANYE
+• Jelajahi bab di 5 dunia: langit cerah, senja, tengah malam, badai, dan arktik
+• Raih 1-3 bintang di setiap level dan ulangi level yang sudah selesai untuk memperbaiki nilai
+• Bos raksasa menutup setiap bab dan kembali lebih kuat sebagai Mk II, Mk III, dan seterusnya
+
+MUSUH
+• 9 jenis musuh: penembak jitu, penyeruduk, pembom, jet berperisai, kawanan drone, penebar ranjau, dan lainnya
+• Ancaman baru terus datang dan tingkat kesulitan terus naik
+
+UPGRADE DAN JET
+• Tingkatkan armor dan meriammu hingga tembakan tiga arah
+• Buka rudal pengejar, ledakan, dan tombak penembus
+• Kumpulkan skin jet; pesawatmu berkembang seiring upgrade
+
+EKSTRA
+• Pengganda combo dan akhir bos dengan gerak lambat
+• Hadiah harian dengan rentetan login
+• Kontrol sentuh sederhana dan musik arcade
 • Main offline, tidak perlu internet untuk terbang
-• Gratis, dengan iklan hadiah opsional untuk mendapatkan poin bonus
+• Gratis, dengan iklan hadiah opsional untuk poin bonus dan skin
 
 Siap lepas landas, pilot?
 
 === hi-IN ===
 TITLE:
-Plane Shooter
+Plane Shooter: Sky Fighter
 
 SHORT DESCRIPTION:
-दुश्मन के विमान उड़ाएँ, विशाल बॉस को हराएँ और अपने फाइटर जेट को अपग्रेड करें।
+रोमांचक हवाई युद्ध: 5 दुनिया, विशाल बॉस, जेट स्किन। मुफ़्त और ऑफ़लाइन।
 
 FULL DESCRIPTION:
-Plane Shooter में आसमान पर राज करें, यह लैंडस्केप मोड में खेला जाने वाला तेज़ आर्केड शूटर गेम है। दुश्मन की गोलियों से बचें, विमानों की लहरों को उड़ा दें और विशाल बॉस को हराएँ।
+Plane Shooter में आसमान पर राज करें, लैंडस्केप मोड में खेला जाने वाला तेज़ आर्केड शूटर। दुश्मन की गोलियों से बचें, कॉम्बो बनाएँ और विशाल बॉस को हराएँ।
 
-विशेषताएँ
-• लैंडस्केप मोड के लिए बने आसान टच कंट्रोल
-• आगे बढ़ने पर नए दुश्मन विमान आते हैं: स्नाइपर, रशर, बॉम्बर और भी बहुत कुछ
-• हर तीसरे लेवल पर एक विशाल बॉस, जिसके पास अपना घातक हथियार है
-• मिशनों के बीच अपने कवच और तोप को अपग्रेड करें
-• खास हथियार अनलॉक करें: होमिंग मिसाइल, विस्फोटक धमाके और भेदने वाला भाला
-• ऑफ़लाइन खेलें, उड़ान भरने के लिए इंटरनेट की ज़रूरत नहीं
-• मुफ़्त, बोनस पॉइंट के लिए वैकल्पिक रिवॉर्ड विज्ञापनों के साथ
+कैंपेन
+• 5 दुनियाओं में चैप्टर पार करें: साफ़ आसमान, सूर्यास्त, आधी रात, तूफ़ान और आर्कटिक
+• हर लेवल में 1 से 3 स्टार कमाएँ और पूरे हो चुके लेवल दोबारा खेलकर रेटिंग सुधारें
+• हर चैप्टर के अंत में एक विशाल बॉस आता है, जो Mk II, Mk III और आगे और भी ताकतवर होकर लौटता है
 
-उड़ान भरने के लिए तैयार हैं, पायलट?
+दुश्मन
+• 9 तरह के दुश्मन: स्नाइपर, रशर, बॉम्बर, शील्ड वाले फ़ाइटर, ड्रोन झुंड, माइन बिछाने वाले और भी बहुत कुछ
+• नए ख़तरे आते रहते हैं और मुश्किल लगातार बढ़ती जाती है
+
+अपग्रेड और जेट
+• अपने कवच और तोप को ट्रिपल शॉट तक अपग्रेड करें
+• होमिंग मिसाइल, विस्फोटक धमाके और भेदने वाला भाला अनलॉक करें
+• जेट स्किन जमा करें; अपग्रेड के साथ आपका फ़ाइटर भी बदलता जाता है
+
+और भी
+• कॉम्बो मल्टीप्लायर और स्लो-मोशन बॉस फ़िनिश
+• लॉगिन स्ट्रीक के साथ रोज़ के इनाम
+• आसान टच कंट्रोल और आर्केड साउंडट्रैक
+• ऑफ़लाइन खेलें, उड़ान के लिए इंटरनेट की ज़रूरत नहीं
+• मुफ़्त, बोनस पॉइंट और स्किन के लिए वैकल्पिक रिवॉर्ड विज्ञापनों के साथ
+
+उड़ान के लिए तैयार, पायलट?
 
 === bn-BD ===
 TITLE:
-Plane Shooter
+Plane Shooter: Sky Fighter
 
 SHORT DESCRIPTION:
-শত্রুর বিমান ধ্বংস করুন, বিশাল বস হারান এবং আপনার ফাইটার জেট আপগ্রেড করুন।
+রোমাঞ্চকর আকাশযুদ্ধ: ৫টি জগৎ, বিশাল বস, জেট স্কিন। বিনামূল্যে ও অফলাইনে।
 
 FULL DESCRIPTION:
-Plane Shooter-এ আকাশে উড়ুন, ল্যান্ডস্কেপ মোডে খেলার মতো একটি দ্রুতগতির আর্কেড শুটার গেম। শত্রুর গুলি এড়িয়ে চলুন, একের পর এক বিমান ধ্বংস করুন এবং বিশাল বসদের হারান।
+Plane Shooter-এ আকাশে উড়ুন, ল্যান্ডস্কেপ মোডে খেলার দ্রুতগতির আর্কেড শুটার। শত্রুর গুলি এড়িয়ে চলুন, কম্বো বানান এবং বিশাল বসদের ধ্বংস করুন।
 
-বৈশিষ্ট্য
-• ল্যান্ডস্কেপ মোডে খেলার জন্য সহজ টাচ কন্ট্রোল
-• এগিয়ে যাওয়ার সাথে নতুন শত্রু বিমান আসে: স্নাইপার, রাশার, বোমারু বিমান এবং আরও অনেক কিছু
-• প্রতি তৃতীয় লেভেলে একটি বিশাল বস, প্রত্যেকের নিজস্ব মারাত্মক অস্ত্র আছে
-• মিশনের মাঝে আপনার বর্ম ও কামান আপগ্রেড করুন
-• বিশেষ অস্ত্র আনলক করুন: হোমিং মিসাইল, বিস্ফোরক ব্লাস্ট এবং ভেদকারী বর্শা
-• অফলাইনে খেলুন, উড়তে ইন্টারনেট লাগে না
-• বিনামূল্যে, বোনাস পয়েন্টের জন্য ঐচ্ছিক রিওয়ার্ড বিজ্ঞাপনসহ
+ক্যাম্পেইন
+• ৫টি জগতে চ্যাপ্টারের পর চ্যাপ্টার পাড়ি দিন: পরিষ্কার আকাশ, সূর্যাস্ত, মধ্যরাত, ঝড় ও আর্কটিক
+• প্রতিটি লেভেলে ১ থেকে ৩ স্টার অর্জন করুন এবং শেষ করা লেভেল আবার খেলে রেটিং বাড়ান
+• প্রতিটি চ্যাপ্টারের শেষে থাকে এক বিশাল বস, যারা Mk II, Mk III ও তারও পরে আরও শক্তিশালী হয়ে ফিরে আসে
 
-টেকঅফের জন্য প্রস্তুত, পাইলট?
+শত্রু
+• ৯ ধরনের শত্রু: স্নাইপার, রাশার, বোমারু বিমান, ঢালওয়ালা ফাইটার, ড্রোনের ঝাঁক, মাইন বসানো বিমান এবং আরও অনেক কিছু
+• নতুন নতুন বিপদ আসতেই থাকে আর কঠিনতা বাড়তেই থাকে
+
+আপগ্রেড ও জেট
+• আপনার বর্ম ও কামান আপগ্রেড করুন, ট্রিপল শট পর্যন্ত
+• হোমিং মিসাইল, বিস্ফোরক ব্লাস্ট ও ভেদকারী বর্শা আনলক করুন
+• জেট স্কিন সংগ্রহ করুন; আপগ্রেডের সঙ্গে আপনার ফাইটারও বদলাতে থাকে
+
+আরও যা আছে
+• কম্বো মাল্টিপ্লায়ার এবং স্লো-মোশনে বস ধ্বংসের দৃশ্য
+• লগইন স্ট্রিকসহ প্রতিদিনের পুরস্কার
+• সহজ টাচ কন্ট্রোল ও আর্কেড সাউন্ডট্র্যাক
+• অফলাইনে খেলুন, ওড়ার জন্য ইন্টারনেট লাগে না
+• বিনামূল্যে, বোনাস পয়েন্ট ও স্কিনের জন্য ঐচ্ছিক রিওয়ার্ড বিজ্ঞাপনসহ
+
+টেকঅফের জন্য তৈরি, পাইলট?
 
 === ar ===
 TITLE:
-Plane Shooter
+Plane Shooter: Sky Fighter
 
 SHORT DESCRIPTION:
-دمّر طائرات العدو، واهزم الزعماء العمالقة، وطوّر طائرتك المقاتلة.
+معارك جوية ملحمية: 5 عوالم وزعماء عمالقة وأشكال للطائرة. مجانية وبلا إنترنت.
 
 FULL DESCRIPTION:
-حلّق في السماء مع Plane Shooter، لعبة إطلاق نار سريعة بأسلوب الأركيد تُلعب بالوضع الأفقي. تفادَ نيران العدو، وأسقِط موجات من الطائرات، واهزم زعماء عمالقة.
+حلّق في السماء مع Plane Shooter، لعبة تصويب أركيد سريعة تُلعب بالوضع الأفقي. تفادَ نيران الأعداء، وحقّق ضربات متتالية للحصول على كومبو كبير، وأسقط الزعماء العمالقة.
 
-المميزات
-• عناصر تحكم لمس بسيطة مصممة للعب بالوضع الأفقي
-• تظهر طائرات عدو جديدة كلما تقدمت: قناصة ومهاجمون انتحاريون وقاذفات قنابل وغيرها
-• زعيم عملاق كل ثلاث مراحل، ولكل زعيم سلاحه الفتاك الخاص
-• طوّر درعك ومدفعك بين المهمات
-• افتح أسلحة خاصة: صواريخ موجّهة وانفجارات ورمح خارق
+الحملة
+• اعبر فصولًا في 5 عوالم: سماء صافية، غروب، منتصف الليل، عاصفة، ومنطقة قطبية
+• اجمع من 1 إلى 3 نجوم في كل مرحلة وأعد لعب المراحل المنجزة لتحسين تقييمك
+• ينهي كل فصل زعيم عملاق، ويعود أقوى باسم Mk II وMk III وما بعدهما
+
+الأعداء
+• 9 أنواع من الأعداء: قناصة ومهاجمون انتحاريون وقاذفات قنابل ومقاتلات بدروع وأسراب طائرات مسيّرة وزارعو ألغام وغيرهم
+• تظهر تهديدات جديدة باستمرار وتزداد الصعوبة دائمًا
+
+الترقيات والطائرات
+• طوّر درعك ومدفعك حتى الطلقة الثلاثية
+• افتح الصواريخ الموجّهة والانفجارات والرمح الخارق
+• اجمع أشكال الطائرات؛ وتتطور مقاتلتك مع كل ترقية
+
+إضافات
+• مضاعِفات الكومبو ونهاية بطيئة لمعركة الزعيم
+• مكافآت يومية مع سلسلة تسجيل الدخول
+• عناصر تحكم لمس بسيطة وموسيقى بأسلوب الأركيد
 • العب دون اتصال، فلا تحتاج إلى الإنترنت للطيران
-• مجانية، مع إعلانات مكافآت اختيارية للحصول على نقاط إضافية
+• مجانية مع إعلانات مكافآت اختيارية للحصول على نقاط إضافية وأشكال
 
-هل أنت جاهز للإقلاع أيها الطيار؟
+هل أنت مستعد للإقلاع أيها الطيار؟
 
 === ja-JP ===
 TITLE:
-Plane Shooter
+Plane Shooter: Sky Fighter
 
 SHORT DESCRIPTION:
-敵機を撃墜し、巨大ボスを倒して、戦闘機を強化しよう。
+迫力の空中戦。5つのワールド、巨大ボス、機体スキン。無料でオフラインOK。
 
 FULL DESCRIPTION:
-横画面で遊ぶスピーディーなアーケードシューティング「Plane Shooter」で空へ飛び立とう。敵の弾をかわし、敵機の大群を撃ち落とし、巨大ボスを倒せ。
+Plane Shooter で空へ飛び立とう。横画面で遊ぶスピーディーなアーケードシューティングです。敵の弾をかわし、撃墜をつなげて大コンボを決め、巨大ボスを撃破しよう。
 
-特徴
-• 横画面プレイに最適化されたシンプルなタッチ操作
-• 進むにつれて新しい敵機が登場：スナイパー、突撃機、爆撃機など
-• 3ステージごとに巨大ボスが出現し、それぞれが独自の強力な武器を持つ
-• ミッションの合間にアーマーとキャノンを強化
-• 特殊武器を解放：追尾ミサイル、爆発弾、貫通ランス
-• オフライン対応。飛ぶのにインターネット接続は不要
-• 基本プレイ無料。ボーナスポイントがもらえる任意のリワード広告あり
+キャンペーン
+• 晴天、夕暮れ、真夜中、嵐、極地の5つのワールドを進もう
+• 各ステージで星を1〜3個獲得。クリア済みステージを再挑戦して評価を上げられます
+• 各チャプターの最後には巨大ボスが登場。Mk II、Mk III…と強化されて何度も帰ってきます
 
-出撃準備はいいか、パイロット？
+敵機
+• スナイパー、突撃機、爆撃機、シールド付き戦闘機、ドローンの群れ、機雷敷設機など9種類
+• 新しい脅威が次々に現れ、難易度は上がり続けます
+
+強化と機体
+• アーマーとキャノンを強化し、3連射まで進化
+• 追尾ミサイル、爆発弾、貫通ランスを解放
+• 機体スキンを集めよう。強化に合わせて戦闘機も進化します
+
+その他
+• コンボ倍率とスローモーションのボス撃破演出
+• ログインストリーク付きのデイリー報酬
+• シンプルなタッチ操作とアーケード風サウンドトラック
+• オフラインで遊べます。飛ぶのにネット接続は不要
+• 基本プレイ無料。ボーナスポイントとスキン用の任意のリワード広告あり
+
+離陸準備はいいですか、パイロット？
 
 === ko-KR ===
 TITLE:
-Plane Shooter
+Plane Shooter: Sky Fighter
 
 SHORT DESCRIPTION:
-적기를 격추하고, 거대 보스를 쓰러뜨리고, 전투기를 업그레이드하세요.
+박진감 넘치는 공중전. 5개 월드, 거대 보스, 전투기 스킨. 무료, 오프라인 지원.
 
 FULL DESCRIPTION:
-가로 화면으로 즐기는 빠른 아케이드 슈팅 게임 Plane Shooter로 하늘을 날아보세요. 적의 공격을 피하고, 몰려오는 적기를 격추하고, 거대한 보스를 쓰러뜨리세요.
+Plane Shooter로 하늘을 날아오르세요. 가로 화면으로 즐기는 빠른 아케이드 슈팅 게임입니다. 적의 공격을 피하고, 연속 격추로 큰 콤보를 만들고, 거대 보스를 쓰러뜨리세요.
 
-주요 특징
-• 가로 화면 플레이에 맞춘 간단한 터치 조작
-• 진행할수록 새로운 적기 등장: 저격기, 돌격기, 폭격기 등
-• 3레벨마다 거대 보스 등장, 보스마다 고유한 치명적인 무기 보유
-• 미션 사이에 장갑과 대포 업그레이드
-• 특수 무기 해금: 유도 미사일, 폭발탄, 관통 창
-• 오프라인 플레이 가능, 비행하는 데 인터넷 연결이 필요 없음
-• 무료 플레이, 보너스 포인트를 받을 수 있는 선택형 보상형 광고 제공
+캠페인
+• 맑은 하늘, 노을, 한밤, 폭풍, 극지방까지 5개 월드의 챕터를 돌파하세요
+• 레벨마다 별 1~3개를 획득하고, 클리어한 레벨을 다시 플레이해 평가를 올릴 수 있습니다
+• 챕터마다 거대 보스가 등장하며, Mk II, Mk III 등으로 더 강해져 돌아옵니다
+
+적
+• 저격기, 돌격기, 폭격기, 실드 전투기, 드론 떼, 기뢰 부설기 등 9종류의 적
+• 새로운 위협이 계속 등장하고 난이도도 끝없이 올라갑니다
+
+업그레이드와 전투기
+• 장갑과 대포를 3연발까지 업그레이드하세요
+• 유도 미사일, 폭발탄, 관통 창을 해금하세요
+• 전투기 스킨을 모아보세요. 업그레이드에 따라 전투기도 진화합니다
+
+기타
+• 콤보 배수와 슬로 모션 보스 격파 연출
+• 연속 접속 보상이 있는 일일 보상
+• 간단한 터치 조작과 아케이드 사운드트랙
+• 오프라인 플레이 가능, 비행에 인터넷이 필요 없습니다
+• 무료 플레이, 보너스 포인트와 스킨을 위한 선택형 보상형 광고
 
 이륙 준비 되셨나요, 파일럿?
 
 === tr-TR ===
 TITLE:
-Plane Shooter
+Plane Shooter: Sky Fighter
 
 SHORT DESCRIPTION:
-Düşman uçaklarını vur, dev patronları yen ve savaş uçağını geliştir.
+Destansı hava savaşı: 5 dünya, dev patronlar, skinler. Ücretsiz ve çevrimdışı.
 
 FULL DESCRIPTION:
-Yatay ekranda oynanan hızlı bir arcade nişancı oyunu olan Plane Shooter ile gökyüzüne yüksel. Düşman ateşinden kaç, uçak dalgalarını vur ve dev patronları alt et.
+Plane Shooter ile gökyüzüne çık: yatay ekranda oynanan hızlı bir arcade nişancı oyunu. Düşman ateşinden kaç, öldürmeleri büyük kombolara çevir ve dev patronları indir.
 
-ÖZELLİKLER
-• Yatay oyun için tasarlanmış basit dokunmatik kontroller
-• İlerledikçe yeni düşman uçakları çıkar: keskin nişancılar, çarpıcılar, bombardıman uçakları ve daha fazlası
-• Her üç seviyede bir dev patron, her birinin kendine özgü ölümcül silahı var
-• Görevler arasında zırhını ve topunu geliştir
-• Özel silahların kilidini aç: güdümlü füzeler, patlayıcı atışlar ve delici mızrak
-• Çevrimdışı oyna, uçmak için internet bağlantısı gerekmez
-• Ücretsiz, bonus puanlar için isteğe bağlı ödüllü reklamlarla
+KAMPANYA
+• 5 dünyada bölümler boyunca ilerle: açık gökyüzü, gün batımı, gece yarısı, fırtına ve kutup
+• Her seviyede 1 ila 3 yıldız kazan ve tamamladığın seviyeleri tekrar oynayarak notunu yükselt
+• Her bölümü dev bir patron bitirir ve Mk II, Mk III ve ötesi olarak daha güçlü geri döner
+
+DÜŞMANLAR
+• 9 düşman türü: keskin nişancılar, çarpıcılar, bombardıman uçakları, kalkanlı savaşçılar, drone sürüleri, mayın dökücüler ve daha fazlası
+• Yeni tehditler gelmeye devam eder ve zorluk durmadan artar
+
+GELİŞTİRMELER VE JETLER
+• Zırhını ve topunu üçlü atışa kadar geliştir
+• Güdümlü füzelerin, patlayıcı atışların ve delici mızrağın kilidini aç
+• Jet görünümleri topla; savaşçın geliştirdikçe evrim geçirir
+
+EKSTRALAR
+• Kombo çarpanları ve ağır çekimli patron finali
+• Giriş serisiyle günlük ödüller
+• Basit dokunmatik kontroller ve arcade film müziği
+• Çevrimdışı oyna, uçmak için internet gerekmez
+• Ücretsiz; bonus puan ve görünümler için isteğe bağlı ödüllü reklamlar var
 
 Kalkışa hazır mısın, pilot?

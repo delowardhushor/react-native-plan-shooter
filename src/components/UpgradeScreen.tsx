@@ -262,6 +262,9 @@ const styles = StyleSheet.create({
   cards: { paddingHorizontal: 20, paddingVertical: 12, gap: 12, alignItems: 'stretch' },
   card: {
     width: 192,
+    height: '100%',
+    maxHeight: 340, // on tall screens the cards stay compact and centred instead of stretching
+    alignSelf: 'center',
     alignItems: 'center',
     paddingTop: 10,
     paddingBottom: 12,

@@ -80,9 +80,11 @@ export const SkinsScreen = ({ progress, actions, onBack }: Props) => {
                 picture={getHero(skin.id, progress.cannon)}
                 width={56}
                 height={26}
-                scale={2}
+                scale={2.7}
                 color={skin.ui}
                 dim={!unlocked}
+                boxWidth={162}
+                boxHeight={84}
               />
               <Text style={styles.name}>{skin.name}</Text>
               {unlocked ? (
@@ -155,7 +157,7 @@ const styles = StyleSheet.create({
   titleBar: { width: 70, height: 3, borderRadius: 2, backgroundColor: COLOR_ACCENT, marginTop: 2 },
   message: { color: '#ff9a8d', fontSize: 11, fontWeight: '800', textAlign: 'center', marginTop: 6, letterSpacing: 1 },
   cards: { paddingHorizontal: 20, paddingVertical: 14, gap: 12, alignItems: 'stretch' },
-  card: { width: 190, alignItems: 'center', paddingTop: 12, paddingBottom: 12, paddingHorizontal: 14 },
+  card: { width: 190, height: '100%', maxHeight: 300, alignSelf: 'center', alignItems: 'center', paddingTop: 12, paddingBottom: 12, paddingHorizontal: 14 },
   ribbon: { position: 'absolute', top: 10, right: 10, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, zIndex: 5 },
   ribbonText: { color: '#10202e', fontSize: 9, fontWeight: '900', letterSpacing: 1.5 },
   name: { color: COLOR_TEXT, fontSize: 14, fontWeight: '900', letterSpacing: 3, marginTop: 6 },

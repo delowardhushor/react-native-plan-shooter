@@ -46,7 +46,7 @@ ctx.fillStyle = tl; ctx.beginPath(); ctx.moveTo(-200, -6); ctx.lineTo(-420, -34)
 ctx.restore();
 ctx.save(); ctx.translate(jx, jy); ctx.rotate(rot * Math.PI / 180);
 ctx.shadowColor = 'rgba(0,10,30,0.5)'; ctx.shadowBlur = 24; ctx.shadowOffsetY = 14;
-ctx.scale(sc, sc); ctx.translate(-28, -13); drawJet(c, PLAYER_PALETTE);
+ctx.scale(sc, sc); ctx.translate(-28, -13); drawHero(c, 5, FALCON_PALETTE);
 ctx.restore();
 ctx.save(); ctx.translate(jx, jy); ctx.rotate(rot * Math.PI / 180);
 const eg = ctx.createRadialGradient(-218, 8, 0, -218, 8, 70);

@@ -108,7 +108,7 @@ fireball(560, 122, 24);
 // player: hero jet, tilted up, with engine glow + tracer fire
 const px = 285, py = 352, ps = 5.2, prot = -9;
 trail(px - 145, py + 14, 260, 5, prot);
-sprite(drawJet, PLAYER_PALETTE, JET_FRAME, px, py, ps, { rot: prot });
+sprite(drawHeroSprite, FALCON_PALETTE, JET_FRAME, px, py, ps, { rot: prot, extra: 5 });
 // engine flame
 ctx.save(); ctx.translate(px, py); ctx.rotate(prot * Math.PI / 180);
 glow(-140, 2, 56, 'rgba(150,210,255,0.8)', 'rgba(255,150,50,0.4)'); ctx.restore();

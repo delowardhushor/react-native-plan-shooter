@@ -1,6 +1,7 @@
 // Minimal Skia -> Canvas2D shim so the game's sprite code runs unchanged in a browser.
 const EnemyType = new Proxy({}, { get: (_, k) => k });
 const BlurStyle = { Normal: 0 };
+const ClipOp = { Intersect: 0 };
 const mk = (fn) => ({ fn });
 const addStops = (g, colors, pos) => { colors.forEach((col, i) => g.addColorStop(pos ? pos[i] : i / (colors.length - 1), col)); return g; };
 const linear = (x0, y0, x1, y1, colors, pos) => mk(ctx => addStops(ctx.createLinearGradient(x0, y0, x1, y1), colors, pos));
@@ -34,5 +35,8 @@ const wrap = (ctx) => {
     drawOval: (r, paint) => { const p = new Path2D(); p.ellipse(r.x + r.w / 2, r.y + r.h / 2, r.w / 2, r.h / 2, 0, 0, Math.PI * 2); paintIt(paint, () => ctx.fill(p), () => ctx.stroke(p)); },
     drawRect: (r, paint) => paintIt(paint, () => ctx.fillRect(r.x, r.y, r.w, r.h), () => ctx.strokeRect(r.x, r.y, r.w, r.h)),
     drawRRect: (r, paint) => { const p = rrPath(r); paintIt(paint, () => ctx.fill(p), () => ctx.stroke(p)); },
+    save: () => ctx.save(),
+    restore: () => ctx.restore(),
+    clipRect: (r) => { const p = new Path2D(); p.rect(r.x, r.y, r.w, r.h); ctx.clip(p); },
   };
 };

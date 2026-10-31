@@ -27,7 +27,12 @@ export const GlassButton = ({ label, sublabel, onPress, variant = 'secondary', d
       style={[styles.button, small && styles.small, disabled ? styles.disabled : variantStyles[variant], style]}
     >
       {!disabled && <View style={[styles.gloss, small && styles.glossSmall]} pointerEvents="none" />}
-      <Text style={[styles.label, small && styles.smallLabel, lit && !disabled && styles.darkLabel, disabled && styles.disabledLabel]}>
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+        style={[styles.label, small && styles.smallLabel, lit && !disabled && styles.darkLabel, disabled && styles.disabledLabel]}
+      >
         {label}
       </Text>
       {!!sublabel && (
