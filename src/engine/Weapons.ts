@@ -22,7 +22,7 @@ const CANNON_TIERS: CannonTier[] = [
 export const cannonStats = (level: number) => CANNON_TIERS[Math.min(level, MAX_CANNON_LEVEL) - 1];
 
 // Cost to buy the NEXT level, indexed by current level
-export const cannonUpgradeCost = (level: number) => [0, 300, 650, 1100, 1700][level] ?? 0;
+export const cannonUpgradeCost = (level: number) => [0, 120, 450, 900, 1500][level] ?? 0;
 export const missileUpgradeCost = (level: number) => [0, 350, 700, 1150][level] ?? 0;
 
 interface MissileInfo {
@@ -45,7 +45,7 @@ export const MISSILES: Record<MissileType, MissileInfo> = {
   },
   blast: {
     name: 'BLAST', blurb: 'Explodes on impact and hits everything nearby',
-    unlockCost: 600, size: { width: 30, height: 11 }, speed: 8,
+    unlockCost: 400, size: { width: 30, height: 11 }, speed: 8,
     baseDamage: 5, baseCooldown: 140, baseRadius: 70, color: '#ffa23a',
   },
   lance: {

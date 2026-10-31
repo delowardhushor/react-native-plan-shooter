@@ -1,22 +1,30 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AppState, StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { AppState, Linking, StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { Canvas, Picture } from '@shopify/react-native-skia';
 import {
   PLAYER_SPEED, MAX_CONTINUES, COLOR_TEXT, COLOR_PANEL, COLOR_PANEL_BORDER, COLOR_ACCENT
 } from '../engine/Constants';
-import { createInitialState, updateGameState, revivePlayer, missileCharge, type GameState, type Loadout } from '../engine/GameLoop';
+import {
+  COMBO_WINDOW, comboMultiplier, createInitialState, updateGameState, revivePlayer, missileCharge,
+  type GameState, type Loadout,
+} from '../engine/GameLoop';
 import { MISSILES } from '../engine/Weapons';
 import { renderFrame } from '../render/Renderer';
-import { computeReward } from '../state/Progress';
+import { computeRunReward, computeStars, REPLAY_REWARD_FACTOR, STAR_BONUS } from '../state/Progress';
 import { showRewardedAd } from '../services/Ads';
 import { ControlsOverlay } from './ControlsOverlay';
-import { GlassButton, Panel } from './ui';
-import { initSounds, playSound } from '../engine/SoundManager';
+import { GlassButton, Panel, SoundToggle, Stars } from './ui';
+import { buzz, initSounds, playMusic, playSound, type SoundType } from '../engine/SoundManager';
 
 interface Props {
   level: number;
   loadout: Loadout;
-  onFinish: (won: boolean, reward: number) => void;
+  bestScore: number;
+  isReplay: boolean;  // replaying an already cleared level
+  prevStars: number;  // best stars earned on this level so far
+  showRatePrompt: boolean;
+  onRatePromptShown: () => void;
+  onFinish: (won: boolean, reward: number, score: number, stars: number) => void;
   onBonusPoints: (points: number) => void;
   onNext: () => void;
   onRetry: () => void;
@@ -27,12 +35,26 @@ interface Result {
   won: boolean;
   reward: number;
   doubled: boolean;
+  newBest: boolean;
+  askRating: boolean;
+  stars: number;
+  starBonus: number;
 }
+
+const STORE_URL = 'market://details?id=com.planeshooter.planeshooter';
+const STORE_WEB_URL = 'https://play.google.com/store/apps/details?id=com.planeshooter.planeshooter';
 
 // The simulation always advances in fixed 1/60s steps so speed is identical on 60, 90 and 120 Hz screens
 const STEP_MS = 1000 / 60;
 const MAX_STEPS_PER_FRAME = 4;
 const RESULT_DELAY_FRAMES = 70;
+
+// Sound plus the haptic that goes with it (only the moments that matter get a buzz)
+const playEffect = (type: SoundType) => {
+  playSound(type);
+  if (type === 'hurt') buzz(45);
+  else if (type === 'warning') buzz([0, 120, 80, 120]);
+};
 
 export const GameCanvas = (props: Props) => {
   const { level, loadout } = props;
@@ -47,6 +69,7 @@ export const GameCanvas = (props: Props) => {
   const finished = useRef<boolean>(false);
   const continuesUsed = useRef<number>(0);
   const offered = useRef<boolean>(false);
+  const loseJinglePlayed = useRef<boolean>(false);
   const adBusy = useRef<boolean>(false);
   const [adMessage, setAdMessage] = useState('');
   const [adLoading, setAdLoading] = useState(false);
@@ -60,10 +83,23 @@ export const GameCanvas = (props: Props) => {
     finished.current = true;
     const s = gameState.current;
     const won = s.status === 'won';
-    const reward = computeReward(won, s.score, s.level);
+    const stars = won ? computeStars(s.hp / s.maxHp, continuesUsed.current) : 0;
+    const { isReplay, prevStars } = propsRef.current;
+    const reward = computeRunReward({ won, score: s.score, level: s.level, isReplay, stars, prevStars });
+    const starBonus = won ? Math.max(0, stars - prevStars) * STAR_BONUS : 0;
     setOfferContinue(false);
-    setResult({ won, reward, doubled: false });
-    propsRef.current.onFinish(won, reward);
+    // The rating nudge appears once, right after the first boss falls, when the player is happiest
+    const askRating = won && s.config.isBoss && propsRef.current.showRatePrompt;
+    if (askRating) propsRef.current.onRatePromptShown();
+    setResult({ won, reward, doubled: false, newBest: s.score > propsRef.current.bestScore, askRating, stars, starBonus });
+    propsRef.current.onFinish(won, reward, s.score, stars);
+    playMusic(null);
+    if (won) {
+      playSound('win');
+      buzz([0, 80, 60, 160]);
+    } else if (!loseJinglePlayed.current) {
+      playSound('lose');
+    }
   };
 
   const animate = () => {
@@ -72,20 +108,24 @@ export const GameCanvas = (props: Props) => {
     lastTime.current = now;
 
     if (!isPaused.current) {
-      accumulator.current += dt;
+      accumulator.current += dt * gameState.current.timeScale;
       let steps = 0;
       while (accumulator.current >= STEP_MS && steps < MAX_STEPS_PER_FRAME) {
-        updateGameState(gameState.current, playSound);
+        updateGameState(gameState.current, playEffect);
         accumulator.current -= STEP_MS;
         steps += 1;
       }
       if (steps === MAX_STEPS_PER_FRAME) accumulator.current = 0;
 
       const s = gameState.current;
+      if (s.status === 'playing') playMusic(s.bossState > 0 ? 'boss' : 'battle');
       if (s.status !== 'playing' && s.endTimer > RESULT_DELAY_FRAMES && !finished.current && !offered.current) {
         if (s.status === 'lost' && continuesUsed.current < MAX_CONTINUES) {
           offered.current = true;
           setOfferContinue(true);
+          playMusic(null);
+          playSound('lose');
+          loseJinglePlayed.current = true;
         } else {
           finishRun();
         }
@@ -150,8 +190,14 @@ export const GameCanvas = (props: Props) => {
     }
     continuesUsed.current += 1;
     offered.current = false;
+    loseJinglePlayed.current = false;
     setOfferContinue(false);
     revivePlayer(gameState.current);
+  };
+
+  const rateGame = () => {
+    Linking.openURL(STORE_URL).catch(() => Linking.openURL(STORE_WEB_URL).catch(() => {}));
+    setResult(r => (r ? { ...r, askRating: false } : r));
   };
 
   const doubleReward = async () => {
@@ -179,6 +225,9 @@ export const GameCanvas = (props: Props) => {
   const hullRatio = s.hp / s.maxHp;
   const hullColor = hullRatio > 0.5 ? '#4cd97b' : hullRatio > 0.25 ? '#ffb23e' : '#ff4d5a';
   const hullBorder = s.heal > 0 ? '#7dffb0' : s.hurt > 0 ? '#ff6a5e' : COLOR_PANEL_BORDER;
+
+  const comboMult = comboMultiplier(s.combo);
+  const showCombo = s.status === 'playing' && s.combo >= 3;
 
   const bannerOpacity = s.bannerTimer > 0 && s.status === 'playing' ? Math.min(1, s.bannerTimer / 30) : 0;
 
@@ -239,6 +288,33 @@ export const GameCanvas = (props: Props) => {
         </View>
       </View>
 
+      <View style={styles.popupLayer} pointerEvents="none">
+        {s.popups.map((p, i) => (
+          <View key={i} style={[styles.popup, { left: p.x - 60, top: p.y }]}>
+            <Text
+              style={[
+                styles.popupText,
+                p.big && styles.popupBig,
+                { color: p.color, opacity: Math.min(1, p.life / (p.maxLife * 0.4)) },
+              ]}
+            >
+              {p.text}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      {showCombo && (
+        <View style={styles.comboWrap} pointerEvents="none">
+          <Text style={[styles.comboText, comboMult > 1 && styles.comboHot]}>
+            {s.combo} COMBO{comboMult > 1 ? `  x${comboMult}` : ''}
+          </Text>
+          <View style={styles.comboTrack}>
+            <View style={[styles.comboFill, { width: `${(s.comboTimer / COMBO_WINDOW) * 100}%` }]} />
+          </View>
+        </View>
+      )}
+
       {bannerOpacity > 0 && s.banner && (
         <View style={styles.bannerLayer} pointerEvents="none">
           <Text style={[styles.bannerTitle, { opacity: bannerOpacity }, s.banner.title === 'WARNING' && styles.warning]}>
@@ -262,6 +338,7 @@ export const GameCanvas = (props: Props) => {
         <View style={[styles.overlayLayer, styles.dim]}>
           <Panel style={styles.card}>
             <Text style={styles.title}>PAUSED</Text>
+            <SoundToggle style={styles.pauseSound} />
             <View style={styles.buttons}>
               <GlassButton label="RESUME" variant="primary" onPress={togglePause} />
               <GlassButton label="QUIT TO MENU" onPress={props.onMenu} />
@@ -298,11 +375,25 @@ export const GameCanvas = (props: Props) => {
               {result.won ? (cfg.isBoss ? 'BOSS DEFEATED!' : 'LEVEL COMPLETE') : 'MISSION FAILED'}
             </Text>
             <Text style={styles.stats}>LEVEL {s.level}  ·  SCORE {s.score}  ·  KILLS {s.kills}</Text>
+            {result.won && (
+              <View style={styles.resultStars}>
+                <Stars count={result.stars} size={30} />
+              </View>
+            )}
+            {result.newBest && s.score > 0 && <Text style={styles.newBest}>★ NEW BEST SCORE ★</Text>}
+            {s.bestCombo >= 5 && <Text style={styles.comboStat}>BEST COMBO  {s.bestCombo}</Text>}
+            {props.isReplay && <Text style={styles.replayNote}>REPLAY · {Math.round(REPLAY_REWARD_FACTOR * 100)}% POINTS</Text>}
+            {result.starBonus > 0 && <Text style={styles.replayNote}>NEW STAR BONUS  +{result.starBonus}</Text>}
             <View style={styles.rewardRow}>
               <Text style={styles.rewardStar}>★</Text>
               <Text style={styles.rewardValue}>+{result.reward}</Text>
               <Text style={styles.rewardUnit}>POINTS</Text>
             </View>
+            {result.askRating && (
+              <TouchableOpacity onPress={rateGame} activeOpacity={0.8} style={styles.rateBtn}>
+                <Text style={styles.rateText}>ENJOYING THE GAME?  RATE US ★★★★★</Text>
+              </TouchableOpacity>
+            )}
             <View style={styles.buttons}>
               {!result.doubled && result.reward > 0 && (
                 <GlassButton label="WATCH AD" sublabel={`DOUBLE POINTS  +${result.reward}`} variant="ad" onPress={doubleReward} />
@@ -322,6 +413,37 @@ export const GameCanvas = (props: Props) => {
 };
 
 const styles = StyleSheet.create({
+  resultStars: { alignItems: 'center', marginBottom: 6 },
+  replayNote: { color: 'rgba(255,255,255,0.7)', fontSize: 10, fontWeight: '900', letterSpacing: 2, textAlign: 'center', marginTop: 2 },
+  popupLayer: { ...StyleSheet.absoluteFill, zIndex: 15 },
+  popup: { position: 'absolute', width: 120, alignItems: 'center' },
+  popupText: {
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textShadowColor: 'rgba(0,0,0,0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  popupBig: { fontSize: 28 },
+  comboWrap: { position: 'absolute', top: 84, alignSelf: 'center', alignItems: 'center', zIndex: 15 },
+  comboText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 3,
+    textShadowColor: 'rgba(0,0,0,0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  comboHot: { color: COLOR_ACCENT, fontSize: 22 },
+  comboTrack: { width: 110, height: 4, borderRadius: 2, marginTop: 4, backgroundColor: 'rgba(255,255,255,0.25)', overflow: 'hidden' },
+  comboFill: { height: '100%', backgroundColor: COLOR_ACCENT },
+  comboStat: { color: COLOR_ACCENT, fontSize: 11, fontWeight: '900', letterSpacing: 3, textAlign: 'center', marginTop: 2 },
+  rateBtn: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 14, marginBottom: 10, borderRadius: 10, borderWidth: 1, borderColor: COLOR_ACCENT },
+  rateText: { color: COLOR_ACCENT, fontSize: 11, fontWeight: '900', letterSpacing: 2 },
+  pauseSound: { alignSelf: 'center', marginBottom: 12 },
+  newBest: { color: COLOR_ACCENT, fontSize: 13, fontWeight: '900', letterSpacing: 3, textAlign: 'center', marginBottom: 6 },
   container: {
     flex: 1,
     backgroundColor: '#000',

@@ -5,8 +5,8 @@ import type { Boss, Enemy, EnemyBullet, GameState, Particle, Pickup } from '../e
 import { GROUND_Y, drawBackdrop, drawVignette } from './Backdrop';
 import { createPictureUnbounded, fillPaint, strokePaint } from './gfx';
 import {
-  BOSS_FRAMES, BOSS_GLOWS, ENEMY_FRAMES, ENEMY_GLOWS, JET_FRAME, MEDIC_FRAME, ROCKET_FRAME, SEEKER_FRAME,
-  getSprites, type Sprites,
+  BOSS_FRAMES, BOSS_GLOWS, ENEMY_FRAMES, ENEMY_GLOWS, HERO_TIERS, JET_FRAME, MEDIC_FRAME, ROCKET_FRAME, SEEKER_FRAME,
+  getHero, getSprites, type Sprites,
 } from './Sprites';
 
 const normalPaint = Skia.Paint();
@@ -16,6 +16,7 @@ const shadowPaint = fillPaint('#000000');
 const ringPaint = strokePaint('#fff1c4', 2);
 const lockPaint = strokePaint('#ff3b2a', 1.5);
 const hurtPaint = fillPaint('#ff2a2a');
+const flashPaint = fillPaint('#ffffff');
 const sparkPaint = strokePaint('#ffd98a', 1.5);
 sparkPaint.setStrokeCap(StrokeCap.Round);
 sparkPaint.setBlendMode(BlendMode.Plus);
@@ -23,6 +24,13 @@ sparkPaint.setBlendMode(BlendMode.Plus);
 // Briefly washes a sprite white when it takes a hit
 const hitPaint = Skia.Paint();
 hitPaint.setColorFilter(Skia.ColorFilter.MakeBlend(Skia.Color('rgba(255,255,255,0.75)'), BlendMode.SrcATop));
+
+// Repeat bosses are recoloured per Mk so a Mk II is recognisable at a glance: violet, gold, then crimson
+const MK_TINTS = ['rgba(150,90,255,0.34)', 'rgba(255,200,60,0.32)', 'rgba(255,60,60,0.34)'].map(col => {
+  const paint = Skia.Paint();
+  paint.setColorFilter(Skia.ColorFilter.MakeBlend(Skia.Color(col), BlendMode.SrcATop));
+  return paint;
+});
 
 const blit = (c: SkCanvas, img: SkImage, cx: number, cy: number, size: number, paint: typeof normalPaint, alpha: number) => {
   paint.setAlphaf(alpha);
@@ -55,6 +63,7 @@ interface AircraftOpts {
   frameCount: number;
   S: Sprites;
   muzzle?: boolean;
+  tint?: typeof hitPaint; // optional colour wash over the whole sprite
 }
 
 const drawAircraft = (c: SkCanvas, o: AircraftOpts) => {
@@ -70,9 +79,10 @@ const drawAircraft = (c: SkCanvas, o: AircraftOpts) => {
   const flicker = 0.82 + 0.18 * Math.sin(o.frameCount * 1.9);
   o.glows.forEach(([gx, gy, size]) => blit(c, o.S.engineGlow, gx, gy, size * flicker, additivePaint, 0.95));
 
-  if (o.hit) c.saveLayer(hitPaint);
+  const layer = o.hit ? hitPaint : o.tint;
+  if (layer) c.saveLayer(layer);
   c.drawPicture(o.pic);
-  if (o.hit) c.restore();
+  if (layer) c.restore();
 
   if (o.muzzle) blit(c, o.S.flash, o.frame.width + 3, o.frame.height / 2 + 1, 18, additivePaint, 1);
   c.restore();
@@ -140,6 +150,14 @@ const drawEnemy = (c: SkCanvas, S: Sprites, e: Enemy, frameCount: number) => {
   });
 
   const noseY = e.y + e.height / 2;
+  if (e.type === EnemyType.AEGIS && e.mode === 0) {
+    // Energy shield bubble over the nose
+    const pulse = 0.5 + 0.5 * Math.sin(frameCount * 0.2 + e.age * 0.05);
+    blit(c, S.engineGlowCyan, e.x + e.width * 0.25, noseY, e.height * 2.5 + 3 * pulse, additivePaint, 0.45 + 0.2 * pulse);
+    ringPaint.setAlphaf(0.35 + 0.25 * pulse);
+    ringPaint.setStrokeWidth(1);
+    c.drawOval({ x: e.x - 6, y: e.y - 5, width: e.width * 0.7, height: e.height + 10 }, ringPaint);
+  }
   if (e.type === EnemyType.RUSHER && e.mode === 1) {
     // Lock-on: a thin line down the dash path plus a pulsing nose light
     const pulse = 0.5 + 0.5 * Math.sin(frameCount * 0.9);
@@ -158,6 +176,7 @@ const drawBoss = (c: SkCanvas, S: Sprites, b: Boss, frameCount: number) => {
     pic: S.bosses[b.kind], frame: BOSS_FRAMES[b.kind], x: b.x, y: b.y, w: b.width, h: b.height,
     flip: true, tilt: b.dying > 0 ? 6 : b.vy * 1.5, hit: b.hitFlash > 0,
     glows: BOSS_GLOWS[b.kind], frameCount, S,
+    tint: b.tier > 0 ? MK_TINTS[Math.min(b.tier, MK_TINTS.length) - 1] : undefined,
   });
   if (b.dying === 0) {
     // Pulsing red core + warning light, hotter in phase 2
@@ -213,7 +232,7 @@ export const renderFrame = (state: GameState): SkPicture =>
       c.translate((Math.random() - 0.5) * state.shake * 2, (Math.random() - 0.5) * state.shake * 2);
     }
 
-    drawBackdrop(c, f);
+    drawBackdrop(c, f, state.level);
 
     const playerAlive = plane.alive;
     const blinkHidden = plane.invulnerable > 0 && Math.floor(plane.invulnerable / 5) % 2 === 0;
@@ -239,9 +258,10 @@ export const renderFrame = (state: GameState): SkPicture =>
     });
 
     if (playerAlive && !blinkHidden) {
+      const tier = Math.min(state.loadout.cannon, HERO_TIERS);
       drawAircraft(c, {
-        pic: S.player, frame: JET_FRAME, x: plane.x, y: plane.y, w: PLANE_SIZE.width, h: PLANE_SIZE.height,
-        flip: false, tilt: plane.tilt, hit: false, glows: [[2, 13.5, 24]], frameCount: f, S, muzzle: plane.muzzle > 0,
+        pic: getHero(state.loadout.skin, tier), frame: JET_FRAME, x: plane.x, y: plane.y, w: PLANE_SIZE.width, h: PLANE_SIZE.height,
+        flip: false, tilt: plane.tilt, hit: false, glows: [[2, 13.5, 16 + tier]], frameCount: f, S, muzzle: plane.muzzle > 0,
       });
     }
 
@@ -266,24 +286,46 @@ export const renderFrame = (state: GameState): SkPicture =>
     state.particles.forEach(p => { if (p.kind !== 'smoke') drawParticle(c, S, p); });
 
     c.restore();
-    drawVignette(c);
+    drawVignette(c, state.level);
     if (state.hurt > 0) {
       hurtPaint.setAlphaf((state.hurt / 18) * 0.3);
       c.drawRect({ x: 0, y: 0, width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, hurtPaint);
     }
+    if (state.flash > 0) {
+      flashPaint.setAlphaf(state.flash * 0.85);
+      c.drawRect({ x: 0, y: 0, width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, flashPaint);
+    }
   });
 
-// Backdrop with the player's jet cruising, used behind the menu screens
-export const renderMenuFrame = (frame: number): SkPicture =>
+// Backdrop with the player's jet cruising, used behind the menu screens.
+// The jet is shown larger than in play, trailing a fiery exhaust, so the home screen has a hero to look at.
+const MENU_JET_SCALE = 1.9;
+const TRAIL_PUFFS = 11;
+
+export const renderMenuFrame = (frame: number, level: number, cannon: number, skin?: string): SkPicture =>
   createPictureUnbounded(c => {
     const S = getSprites();
-    drawBackdrop(c, frame);
-    const x = SCREEN_WIDTH * 0.16;
-    const y = SCREEN_HEIGHT * 0.5 + Math.sin(frame * 0.035) * 14;
-    drawShadow(c, x, y, PLANE_SIZE.width, PLANE_SIZE.height);
+    drawBackdrop(c, frame, level);
+    const w = PLANE_SIZE.width * MENU_JET_SCALE;
+    const h = PLANE_SIZE.height * MENU_JET_SCALE;
+    const x = SCREEN_WIDTH * 0.2;
+    const y = SCREEN_HEIGHT * 0.5 + Math.sin(frame * 0.035) * 14 - h / 2;
+    const tilt = Math.cos(frame * 0.035) * 5;
+    drawShadow(c, x, y, w, h);
+
+    // Exhaust trail streaming back from the nozzle
+    const nozzleY = y + h * 0.52;
+    for (let i = 0; i < TRAIL_PUFFS; i++) {
+      const t = i / TRAIL_PUFFS;
+      const idx = Math.min(S.fire.length - 1, Math.floor(t * S.fire.length));
+      const wobble = Math.sin(frame * 0.25 + i * 0.9) * 2.2 * t;
+      blit(c, S.fire[idx], x + 2 - i * 7, nozzleY + wobble + tilt * 0.6 * (1 - t), 17 - t * 11, additivePaint, 0.7 * (1 - t));
+    }
+
+    const tier = Math.min(Math.max(cannon, 1), HERO_TIERS);
     drawAircraft(c, {
-      pic: S.player, frame: JET_FRAME, x, y, w: PLANE_SIZE.width, h: PLANE_SIZE.height,
-      flip: false, tilt: Math.cos(frame * 0.035) * 6, hit: false, glows: [[2, 13.5, 24]], frameCount: frame, S,
+      pic: getHero(skin, tier), frame: JET_FRAME, x, y, w, h,
+      flip: false, tilt, hit: false, glows: [[2, 13.5, 16 + tier]], frameCount: frame, S,
     });
-    drawVignette(c);
+    drawVignette(c, level);
   });
