@@ -3,6 +3,7 @@ import { StatusBar, StyleSheet, View } from 'react-native';
 import { GameCanvas } from './src/components/GameCanvas';
 import { MenuScreen } from './src/components/MenuScreen';
 import { CampaignScreen } from './src/components/CampaignScreen';
+import { MissionsScreen, type MissionActions } from './src/components/MissionsScreen';
 import { SkinsScreen, type SkinActions } from './src/components/SkinsScreen';
 import { UpgradeScreen, type UpgradeActions } from './src/components/UpgradeScreen';
 import { initAds } from './src/services/Ads';
@@ -13,9 +14,10 @@ import { MAX_ARMOR_LEVEL, armorMaxHp, armorUpgradeCost } from './src/engine/Armo
 import {
   MAX_CANNON_LEVEL, MAX_MISSILE_LEVEL, MISSILES, cannonUpgradeCost, missileUpgradeCost, type MissileType,
 } from './src/engine/Weapons';
+import { applyRunSummary, claimAchievement, claimMission } from './src/state/Missions';
 import { claimDaily, equippedSkin, isSkinUnlocked, loadProgress, saveProgress, starsFor, type Progress } from './src/state/Progress';
 
-type Screen = 'menu' | 'upgrades' | 'skins' | 'campaign' | 'game';
+type Screen = 'menu' | 'upgrades' | 'skins' | 'campaign' | 'missions' | 'game';
 
 interface Run {
   id: number;
@@ -66,7 +68,7 @@ const App = () => {
     setScreen('game');
   };
 
-  const actions: UpgradeActions & SkinActions & { claimDaily: () => void; markRatePrompted: () => void } = {
+  const actions: UpgradeActions & SkinActions & MissionActions & { claimDaily: () => void; markRatePrompted: () => void } = {
     equipSkin: id => update(p => (isSkinUnlocked(p, skinById(id)) ? { ...p, skin: id } : p)),
     // Finishing the last ad of a skin unlocks it and equips it straight away
     addSkinAd: id =>
@@ -77,6 +79,8 @@ const App = () => {
         return !isSkinUnlocked(p, skin) && isSkinUnlocked(next, skin) ? { ...next, skin: id } : next;
       }),
     claimDaily: () => update(p => claimDaily(p)),
+    claimMission: index => update(p => claimMission(p, index)),
+    claimAchievement: id => update(p => claimAchievement(p, id)),
     markRatePrompted: () => update(p => (p.ratePrompted ? p : { ...p, ratePrompted: true })),
     addPoints: points => update(p => ({ ...p, points: p.points + points })),
     upgradeArmor: () =>
@@ -126,15 +130,15 @@ const App = () => {
           onRatePromptShown={actions.markRatePrompted}
           isReplay={run.isReplay}
           prevStars={run.prevStars}
-          onFinish={(won, reward, score, stars) =>
-            update(p => ({
+          onFinish={(won, reward, score, stars, summary) =>
+            update(p => applyRunSummary({
               ...p,
               points: p.points + reward,
               bestScore: Math.max(p.bestScore, score),
               stars: won ? { ...p.stars, [run.level]: Math.max(p.stars[run.level] ?? 0, stars) } : p.stars,
               // Only advance when the player beat their frontier level
               level: won && run.level === p.level ? p.level + 1 : p.level,
-            }))
+            }, summary))
           }
           onBonusPoints={actions.addPoints}
           onNext={() => startRun(run.level + 1)}
@@ -144,6 +148,8 @@ const App = () => {
       );
     } else if (screen === 'campaign') {
       content = <CampaignScreen progress={progress} onPlayLevel={startRun} onBack={() => setScreen('menu')} />;
+    } else if (screen === 'missions') {
+      content = <MissionsScreen progress={progress} actions={actions} onBack={() => setScreen('menu')} />;
     } else if (screen === 'skins') {
       content = <SkinsScreen progress={progress} actions={actions} onBack={() => setScreen('menu')} />;
     } else if (screen === 'upgrades') {
@@ -156,6 +162,7 @@ const App = () => {
           onUpgrades={() => setScreen('upgrades')}
           onSkins={() => setScreen('skins')}
           onCampaign={() => setScreen('campaign')}
+          onMissions={() => setScreen('missions')}
           onAdPoints={actions.addPoints}
           onClaimDaily={actions.claimDaily}
         />

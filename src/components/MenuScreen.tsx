@@ -9,6 +9,7 @@ import {
 } from '../engine/Weapons';
 import { biomeAccentFor, biomeNameFor } from '../render/Backdrop';
 import { showRewardedAd } from '../services/Ads';
+import { unclaimedCount } from '../state/Missions';
 import { adRewardPoints, dailyStatus, dayKey, equippedSkin, type Progress } from '../state/Progress';
 import { DailyRewardCard } from './DailyRewardCard';
 import { MenuBackdrop } from './MenuBackdrop';
@@ -20,6 +21,7 @@ interface Props {
   onUpgrades: () => void;
   onSkins: () => void;
   onCampaign: () => void;
+  onMissions: () => void;
   onAdPoints: (points: number) => void;
   onClaimDaily: () => void;
 }
@@ -76,7 +78,7 @@ const Chip = ({ label, value }: { label: string; value: string }) => (
   </View>
 );
 
-export const MenuScreen = ({ progress, onPlay, onUpgrades, onSkins, onCampaign, onAdPoints, onClaimDaily }: Props) => {
+export const MenuScreen = ({ progress, onPlay, onUpgrades, onSkins, onCampaign, onMissions, onAdPoints, onClaimDaily }: Props) => {
   const [, setTick] = useState(0);
   const daily = dailyStatus(progress);
   const showDaily = daily.claimable && dailyDismissedOn !== dayKey(new Date());
@@ -86,6 +88,7 @@ export const MenuScreen = ({ progress, onPlay, onUpgrades, onSkins, onCampaign, 
   const canUpgrade = hasAffordableUpgrade(progress);
   const accent = biomeAccentFor(progress.level);
   const adReward = adRewardPoints(progress.level);
+  const ready = unclaimedCount(progress);
 
   // Gentle breathing pulse on PLAY so the main action draws the eye
   const pulse = useRef(new Animated.Value(0)).current;
@@ -120,6 +123,13 @@ export const MenuScreen = ({ progress, onPlay, onUpgrades, onSkins, onCampaign, 
         </View>
         <View style={styles.headerRight}>
           <GlassButton label="CAMPAIGN" small onPress={onCampaign} />
+          <GlassButton
+            label="MISSIONS"
+            sublabel={ready ? `${ready} READY!` : undefined}
+            small
+            variant={ready ? 'primary' : 'secondary'}
+            onPress={onMissions}
+          />
           <GlassButton label="SKINS" small onPress={onSkins} />
           <SoundToggle />
           <PointsPill points={progress.points} />

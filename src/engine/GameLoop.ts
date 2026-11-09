@@ -149,6 +149,15 @@ export const isOnFire = (combo: number) => combo >= ON_FIRE_COMBO;
 const MAX_POPUPS = 8;
 export const comboMultiplier = (combo: number) => Math.min(4, 1 + Math.floor(combo / 5));
 
+// What happened during a run, fed to the missions and achievements when it ends
+export interface RunStats {
+  killsByType: Record<number, number>;
+  bossKills: number;
+  powerUps: number;  // power-up crates collected
+  bombs: number;
+  hitsTaken: number; // hits that got through to the hull (a popped shield doesn't count)
+}
+
 export type GameStatus = 'playing' | 'won' | 'lost';
 
 export interface GameState {
@@ -189,6 +198,7 @@ export interface GameState {
   combo: number; // consecutive kills without taking a hit or letting the timer run out
   comboTimer: number;
   bestCombo: number;
+  stats: RunStats;
   hitStop: number;   // frames the whole simulation freezes for impact
   timeScale: number; // < 1 slows the simulation (boss defeat slow-motion)
   flash: number; // white screen flash, 1 -> 0
@@ -258,6 +268,7 @@ export const createInitialState = (level: number, loadout: Loadout): GameState =
     combo: 0,
     comboTimer: 0,
     bestCombo: 0,
+    stats: { killsByType: {}, bossKills: 0, powerUps: 0, bombs: 0, hitsTaken: 0 },
     hitStop: 0,
     timeScale: 1,
     flash: 0,
@@ -416,6 +427,7 @@ const hurtPlayer = (s: GameState, amount: number, onSound: SoundFn) => {
     return;
   }
 
+  s.stats.hitsTaken += 1;
   s.hp = Math.max(0, s.hp - amount);
   s.hurt = 18;
   s.combo = 0;
@@ -1007,6 +1019,7 @@ const detonateBomb = (s: GameState, onSound: SoundFn) => {
   const cx = plane.x + plane.width / 2;
   const cy = plane.y + plane.height / 2;
   s.bomb = 0;
+  s.stats.bombs += 1;
   s.bombLock = BOMB_LOCK_FRAMES;
   plane.invulnerable = Math.max(plane.invulnerable, BOMB_INVULNERABLE_FRAMES);
 
@@ -1206,6 +1219,7 @@ const reapEnemies = (s: GameState, onSound: SoundFn) => {
     const points = def.score * mult;
     s.score += points;
     s.kills += 1;
+    s.stats.killsByType[e.type] = (s.stats.killsByType[e.type] ?? 0) + 1;
     addPopup(s, e.x + e.width / 2, e.y, mult > 1 ? `+${points} x${mult}` : `+${points}`, mult > 1 ? '#ffb23e' : '#ffffff');
     maybeDropPowerUp(s, e, def.boom > 1.2);
     s.enemies.splice(i, 1);
@@ -1214,6 +1228,7 @@ const reapEnemies = (s: GameState, onSound: SoundFn) => {
   const boss = s.boss;
   if (boss && boss.dying === 0 && boss.hp <= 0) {
     boss.dying = 1;
+    s.stats.bossKills += 1;
     s.hitStop = Math.max(s.hitStop, 10);
     s.score += 500;
     addPopup(s, boss.x + boss.width / 2, boss.y, '+500', '#ffb23e', true);
@@ -1282,6 +1297,7 @@ const updatePickups = (s: GameState, onSound: SoundFn) => {
       } else {
         const def = POWERUPS[p.kind];
         s.powerUps[p.kind] = def.duration;
+        s.stats.powerUps += 1;
         addPopup(s, p.x + p.width / 2, p.y - 6, def.name, def.color);
       }
       onSound('pickup');

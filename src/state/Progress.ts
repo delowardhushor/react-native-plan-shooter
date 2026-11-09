@@ -2,6 +2,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { MissileType } from '../engine/Weapons';
 import { DEFAULT_SKIN, skinById, type Skin } from '../engine/Skins';
 
+// One of today's three missions; self-contained so it survives changes to the mission list
+export interface MissionItem {
+  stat: string;     // run-summary key this mission counts (see state/Missions.ts)
+  label: string;
+  target: number;
+  reward: number;
+  progress: number;
+  claimed: boolean;
+}
+
+export interface DailyMissions {
+  day: string; // local YYYY-MM-DD the missions were rolled for
+  items: MissionItem[];
+}
+
 export interface Progress {
   level: number;   // the level the player will play next
   points: number;  // upgrade currency
@@ -16,6 +31,9 @@ export interface Progress {
   skin: string;          // equipped jet livery
   skinAds: Record<string, number>; // rewarded ads watched toward each ad-locked skin
   stars: Record<number, number>;   // best star rating (1-3) per cleared level
+  lifetime: Record<string, number>; // running totals across all runs (kills, bosses, bombs...)
+  missions: DailyMissions | null;
+  achClaimed: Record<string, boolean>; // achievements whose reward has been collected
 }
 
 const KEY = 'planeshooter.progress.v1';
@@ -38,6 +56,9 @@ export const defaultProgress = (): Progress => ({
   skin: DEFAULT_SKIN,
   skinAds: {},
   stars: {},
+  lifetime: {},
+  missions: null,
+  achClaimed: {},
 });
 
 export const loadProgress = async (): Promise<Progress> => {
@@ -51,6 +72,8 @@ export const loadProgress = async (): Promise<Progress> => {
       ...saved,
       skinAds: { ...saved.skinAds },
       stars: { ...saved.stars },
+      lifetime: { ...saved.lifetime },
+      achClaimed: { ...saved.achClaimed },
       missiles: {
         homing: { ...base.missiles.homing, ...saved.missiles?.homing },
         blast: { ...base.missiles.blast, ...saved.missiles?.blast },

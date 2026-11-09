@@ -484,3 +484,36 @@ describe('boss rage phases and hit-stop', () => {
     expect(s.hitStop).toBeGreaterThan(0);
   });
 });
+
+describe('run stats', () => {
+  it('counts kills by type, power-ups, bombs and hits taken', () => {
+    const s = createInitialState(1, loadout());
+    s.spawnTimer = 99999;
+    s.pickupTimer = 99999;
+    s.enemies = [plainEnemy(600, 100, 0), plainEnemy(620, 200, 0, EnemyType.ROAMER)];
+    s.pickups.push({ kind: 'rapid', vx: -1.3, x: s.plane.x, y: s.plane.y, width: 28, height: 28, baseY: s.plane.y, age: 0 });
+    s.bomb = 100;
+    s.bombRequested = true;
+    step(s);
+    expect(s.stats.killsByType[EnemyType.STANDARD]).toBe(1);
+    expect(s.stats.killsByType[EnemyType.ROAMER]).toBe(1);
+    expect(s.stats.powerUps).toBe(1);
+    expect(s.stats.bombs).toBe(1);
+    expect(s.stats.hitsTaken).toBe(0);
+
+    s.hitStop = 0;
+    s.plane.invulnerable = 0;
+    shootPlayer(s);
+    step(s);
+    expect(s.stats.hitsTaken).toBe(1);
+  });
+
+  it('a popped shield is not counted as a hit', () => {
+    const s = createInitialState(1, loadout());
+    s.plane.invulnerable = 0;
+    s.powerUps.shield = 500;
+    shootPlayer(s);
+    step(s);
+    expect(s.stats.hitsTaken).toBe(0);
+  });
+});

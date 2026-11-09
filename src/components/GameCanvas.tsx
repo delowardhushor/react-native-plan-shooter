@@ -11,6 +11,7 @@ import {
 import { MISSILES } from '../engine/Weapons';
 import { POWERUPS, POWERUP_KINDS } from '../engine/PowerUps';
 import { renderFrame, LOW_HP_RATIO } from '../render/Renderer';
+import { summarizeRun, type RunSummary } from '../state/Missions';
 import { computeRunReward, computeStars, REPLAY_REWARD_FACTOR, STAR_BONUS } from '../state/Progress';
 import { showRewardedAd } from '../services/Ads';
 import { ControlsOverlay } from './ControlsOverlay';
@@ -25,7 +26,7 @@ interface Props {
   prevStars: number;  // best stars earned on this level so far
   showRatePrompt: boolean;
   onRatePromptShown: () => void;
-  onFinish: (won: boolean, reward: number, score: number, stars: number) => void;
+  onFinish: (won: boolean, reward: number, score: number, stars: number, summary: RunSummary) => void;
   onBonusPoints: (points: number) => void;
   onNext: () => void;
   onRetry: () => void;
@@ -94,7 +95,7 @@ export const GameCanvas = (props: Props) => {
     const askRating = won && s.config.isBoss && propsRef.current.showRatePrompt;
     if (askRating) propsRef.current.onRatePromptShown();
     setResult({ won, reward, doubled: false, newBest: s.score > propsRef.current.bestScore, askRating, stars, starBonus });
-    propsRef.current.onFinish(won, reward, s.score, stars);
+    propsRef.current.onFinish(won, reward, s.score, stars, summarizeRun(s, won, stars));
     playMusic(null);
     if (won) {
       playSound('win');
