@@ -11,6 +11,8 @@ export enum EnemyType {
   AEGIS = 6,    // armoured fighter behind an energy shield; the shield drops at half health
   SWARM = 7,    // small, fast drones that arrive in a weaving V and ram
   MINELAYER = 8, // slow carrier that seeds the screen with drifting plasma mines
+  SPLITTER = 9,  // tough hull that breaks into two swarm drones when destroyed
+  TELEPORTER = 10, // blinks into the player's lane (after a warning) and fires a volley
 }
 
 export const ENEMY_NAMES: Record<EnemyType, string> = {
@@ -23,6 +25,8 @@ export const ENEMY_NAMES: Record<EnemyType, string> = {
   [EnemyType.AEGIS]: 'AEGIS',
   [EnemyType.SWARM]: 'SWARM',
   [EnemyType.MINELAYER]: 'MINELAYER',
+  [EnemyType.SPLITTER]: 'SPLITTER',
+  [EnemyType.TELEPORTER]: 'TELEPORTER',
 };
 
 export interface EnemyDef {
@@ -42,6 +46,8 @@ export const ENEMY_DEFS: Record<EnemyType, EnemyDef> = {
   [EnemyType.AEGIS]: { size: { width: 64, height: 30 }, hp: 8, score: 90, boom: 1.6 },
   [EnemyType.SWARM]: { size: { width: 30, height: 13 }, hp: 1, score: 12, boom: 0.7 },
   [EnemyType.MINELAYER]: { size: { width: 76, height: 34 }, hp: 9, score: 100, boom: 1.8 },
+  [EnemyType.SPLITTER]: { size: { width: 54, height: 26 }, hp: 5, score: 60, boom: 1.3 },
+  [EnemyType.TELEPORTER]: { size: { width: 46, height: 22 }, hp: 4, score: 70, boom: 1.2 },
 };
 
 export interface BossDef {

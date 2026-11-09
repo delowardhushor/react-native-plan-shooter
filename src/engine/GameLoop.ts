@@ -7,7 +7,7 @@ import {
 import { medicHeal } from './Armor';
 import { PROJECTILES, type ProjectileKind } from './Projectiles';
 import { BONUS_SCORE_MULTIPLIER, applyMode, getLevelConfig, newEnemiesAt, type LevelConfig } from './Levels';
-import { cannonStats, missileStats, type MissileType } from './Weapons';
+import { BEAM_FRAMES, BEAM_TICK, cannonStats, missileStats, type MissileType } from './Weapons';
 import {
   POWERUPS, POWERUP_KINDS, noPowerUps, RAPID_FIRE_FACTOR, PIERCE_DAMAGE, SHIELD_BREAK_INVULNERABLE_FRAMES, WINGMAN_OFFSET,
   DROP_CHANCE_SMALL, DROP_CHANCE_BIG, DROP_PITY_KILLS, DROP_CHANCE_BONUS, DROP_PITY_BONUS, type ActivePowerUps, type PowerUpKind,
@@ -158,6 +158,12 @@ export interface RunStats {
   hitsTaken: number; // hits that got through to the hull (a popped shield doesn't count)
 }
 
+// The laser beam currently burning, if any
+export interface Beam {
+  frames: number; // frames left
+  damage: number; // per tick
+}
+
 export type GameStatus = 'playing' | 'won' | 'lost';
 
 export interface GameState {
@@ -179,6 +185,7 @@ export interface GameState {
   bomb: number;           // 0..BOMB_MAX charge
   bombRequested: boolean;
   bombLock: number;       // frames during which kills don't recharge the bomb
+  beam: Beam | null;
   spawnTimer: number;
   bossState: 0 | 1 | 2; // 0 = not yet, 1 = warning, 2 = boss fight
   bossTimer: number;
@@ -252,6 +259,7 @@ export const createInitialState = (level: number, loadout: Loadout): GameState =
     bomb: BOMB_START,
     bombRequested: false,
     bombLock: 0,
+    beam: null,
     spawnTimer: 100,
     bossState: 0,
     bossTimer: 0,
@@ -493,6 +501,7 @@ const winLevel = (s: GameState) => {
   s.enemies = [];
   s.enemyBullets = [];
   s.missiles = [];
+  s.beam = null;
 };
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -754,6 +763,63 @@ const updateEnemy = (s: GameState, e: Enemy, onSound: SoundFn) => {
       e.vy = e.y - prevY;
       break;
 
+    case EnemyType.SPLITTER:
+      e.x -= config.enemySpeed * 0.75;
+      e.y = clamp(e.baseY + Math.sin(e.age * 0.04) * 18, 50, maxY);
+      e.vy = e.y - prevY;
+      if (e.x < SCREEN_WIDTH - 60 && s.frameCount - e.lastFiredFrame >= config.roamerFireRate * 1.8) {
+        fireEnemyBullet(s, e.x, cy, -config.enemyBulletSpeed * 0.9, 0);
+        e.lastFiredFrame = s.frameCount;
+        onSound('shoot');
+      }
+      break;
+
+    case EnemyType.TELEPORTER:
+      // mode 0 glide in, 1 hover and line up, 2 blink warning (the destination is marked), 3 arrived: volley
+      if (e.mode === 0) {
+        e.x -= config.enemySpeed * 1.4;
+        if (e.x <= e.targetX) { e.mode = 1; e.timer = 70; }
+      } else if (e.mode === 1) {
+        if (e.age >= 1500) {
+          e.x -= 2; // gives up and leaves
+        } else {
+          if (plane.alive) e.y += clamp((plane.y + plane.height / 2 - cy) * 0.03, -1, 1);
+          e.y = clamp(e.y, 50, maxY);
+          e.timer -= 1;
+          if (e.timer <= 0) {
+            // Blink to the right half of the screen, level with the player
+            e.targetX = rand(SCREEN_WIDTH * 0.5, SCREEN_WIDTH - e.width - 20);
+            e.baseY = clamp(plane.y + plane.height / 2 + rand(-100, 100) - e.height / 2, 50, maxY);
+            e.mode = 2;
+            e.timer = TELEPORT_WARNING_FRAMES;
+            emit(s, 'ring', e.targetX + e.width / 2, e.baseY + e.height / 2, 0, 0, TELEPORT_WARNING_FRAMES, 70);
+            onSound('hit');
+          }
+        }
+      } else if (e.mode === 2) {
+        e.timer -= 1;
+        if (e.timer <= 0) {
+          emit(s, 'flash', e.x + e.width / 2, cy, 0, 0, 8, 40);
+          e.x = e.targetX;
+          e.y = e.baseY;
+          emit(s, 'flash', e.x + e.width / 2, e.y + e.height / 2, 0, 0, 8, 50);
+          e.mode = 3;
+          e.timer = 16;
+        }
+      } else {
+        e.timer -= 1;
+        if (e.timer <= 0) {
+          if (plane.alive) {
+            fireAimed(s, e.x, e.y + e.height / 2, config.enemyBulletSpeed, [-0.2, 0, 0.2]);
+            onSound('shoot');
+          }
+          e.mode = 1;
+          e.timer = 110 + Math.floor(rand(0, 40));
+        }
+      }
+      e.vy = clamp(e.y - prevY, -3, 3);
+      break;
+
     case EnemyType.BOMBER:
       e.x -= config.enemySpeed * 0.5;
       if (e.x < SCREEN_WIDTH - 90 && s.frameCount - e.lastFiredFrame >= config.roamerFireRate * 1.2) {
@@ -764,6 +830,8 @@ const updateEnemy = (s: GameState, e: Enemy, onSound: SoundFn) => {
       break;
   }
 };
+
+export const TELEPORT_WARNING_FRAMES = 40;
 
 const SEEKER_LIFETIME = 280;
 
@@ -1056,6 +1124,13 @@ const fireMissile = (s: GameState, onSound: SoundFn) => {
   s.missileRequested = false;
   if (s.frameCount - s.lastMissileFrame < stats.cooldown) return;
 
+  if (loadout.missile === 'laser') {
+    s.beam = { frames: BEAM_FRAMES, damage: stats.damage };
+    s.lastMissileFrame = s.frameCount;
+    onSound('shoot');
+    return;
+  }
+
   s.missiles.push({
     type: loadout.missile,
     x: plane.x + plane.width - 6,
@@ -1071,6 +1146,43 @@ const fireMissile = (s: GameState, onSound: SoundFn) => {
   });
   s.lastMissileFrame = s.frameCount;
   onSound('shoot');
+};
+
+// The laser: a beam from the nose to the edge of the screen that follows the jet. Everything in it takes a
+// tick of damage every few frames, and enemy shots that touch it are burnt away.
+export const beamBox = (plane: Plane): Box => ({
+  x: plane.x + plane.width - 4, y: plane.y + plane.height / 2 - 6, width: SCREEN_WIDTH, height: 12,
+});
+
+const updateBeam = (s: GameState, onSound: SoundFn) => {
+  const beam = s.beam;
+  if (!beam) return;
+  beam.frames -= 1;
+  if (beam.frames <= 0) {
+    s.beam = null;
+    return;
+  }
+  const box = beamBox(s.plane);
+  const bx = box.x;
+  const by = box.y + box.height / 2;
+
+  for (let i = s.enemyBullets.length - 1; i >= 0; i--) {
+    const b = s.enemyBullets[i];
+    if (!isRectCollision(box, b)) continue;
+    spawnExplosion(s, b.x + b.width / 2, b.y + b.height / 2, 0.4);
+    s.enemyBullets.splice(i, 1);
+  }
+
+  if (beam.frames % BEAM_TICK === 0) {
+    forEachTarget(s, t => {
+      if (!isRectCollision(box, t)) return;
+      damageTarget(t, beam.damage);
+      emit(s, 'flash', Math.max(t.x, bx), by, 0, 0, 6, 26);
+      spawnHitSparks(s, Math.max(t.x, bx), by);
+      if (t.hp > 0) onSound('hit');
+    });
+  }
+  s.shake = Math.max(s.shake, 1.5);
 };
 
 const steerHoming = (s: GameState, m: Missile) => {
@@ -1230,6 +1342,16 @@ const reapEnemies = (s: GameState, onSound: SoundFn) => {
     s.stats.killsByType[e.type] = (s.stats.killsByType[e.type] ?? 0) + 1;
     addPopup(s, e.x + e.width / 2, e.y, mult > 1 ? `+${points} x${mult}` : `+${points}`, mult > 1 ? '#ffb23e' : '#ffffff');
     maybeDropPowerUp(s, e, def.boom > 1.2);
+    // A splitter breaks into two drones (unless a bomb wiped the screen)
+    if (e.type === EnemyType.SPLITTER && s.bombLock === 0) {
+      [-1, 1].forEach(dir => {
+        const drone = makeEnemy(s, EnemyType.SWARM, e.x + 8, e.y + e.height / 2 - ENEMY_DEFS[EnemyType.SWARM].size.height / 2);
+        drone.baseY = drone.y + dir * 28;
+        drone.y = drone.baseY;
+        s.enemies.push(drone);
+      });
+      addPopup(s, e.x + e.width / 2, e.y - 14, 'SPLIT!', '#ffb23e');
+    }
     s.enemies.splice(i, 1);
   }
 
@@ -1372,6 +1494,7 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
 
     fireCannon(s, onSound);
     fireMissile(s, onSound);
+    updateBeam(s, onSound);
     if (s.bombRequested) {
       s.bombRequested = false;
       if (s.bomb >= BOMB_MAX) detonateBomb(s, onSound);

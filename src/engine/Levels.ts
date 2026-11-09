@@ -63,6 +63,8 @@ export const ENEMY_UNLOCK_LEVEL: Partial<Record<EnemyType, number>> = {
   [EnemyType.AEGIS]: 13,
   [EnemyType.SWARM]: 16,
   [EnemyType.MINELAYER]: 19,
+  [EnemyType.SPLITTER]: 10,
+  [EnemyType.TELEPORTER]: 22,
 };
 
 // Enemy planes that make their first appearance on exactly this level
@@ -84,6 +86,8 @@ const buildRoster = (level: number): SpawnEntry[] => {
   if (level >= 13) roster.push({ type: EnemyType.AEGIS, weight: 3, max: level >= 19 ? 3 : 2 });
   if (level >= 16) roster.push({ type: EnemyType.SWARM, weight: 3, max: 8 });
   if (level >= 19) roster.push({ type: EnemyType.MINELAYER, weight: 2, max: 1 });
+  if (level >= 10) roster.push({ type: EnemyType.SPLITTER, weight: 3, max: level >= 16 ? 2 : 1 });
+  if (level >= 22) roster.push({ type: EnemyType.TELEPORTER, weight: 2, max: level >= 28 ? 2 : 1 });
   return roster;
 };
 

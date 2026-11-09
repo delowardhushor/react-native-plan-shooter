@@ -185,7 +185,7 @@ export const UpgradeScreen = ({ progress, actions, onBack }: Props) => {
               )}
               <Text style={styles.blurb}>{info.blurb}</Text>
               <View style={styles.stats}>
-                <StatRow label="DAMAGE" value={String(stats.damage)} next={owned.owned && !maxed ? String(next.damage) : undefined} />
+                <StatRow label={type === 'laser' ? 'PER TICK' : 'DAMAGE'} value={String(stats.damage)} next={owned.owned && !maxed ? String(next.damage) : undefined} />
                 <StatRow
                   label="RELOAD"
                   value={`${(stats.cooldown / 60).toFixed(1)}s`}

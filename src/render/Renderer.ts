@@ -1,7 +1,8 @@
 import { Skia, BlendMode, StrokeCap, type SkCanvas, type SkImage, type SkPicture } from '@shopify/react-native-skia';
 import { PLANE_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT } from '../engine/Constants';
 import { EnemyType } from '../engine/Enemies';
-import { isOnFire, wingmanDrones } from '../engine/GameLoop';
+import { TELEPORT_WARNING_FRAMES, beamBox, isOnFire, wingmanDrones } from '../engine/GameLoop';
+import { BEAM_FRAMES } from '../engine/Weapons';
 import type { Boss, Enemy, EnemyBullet, GameState, Particle, Pickup } from '../engine/GameLoop';
 import { GROUND_Y, drawBackdrop, drawVignette } from './Backdrop';
 import { createPictureUnbounded, fillPaint, radial, shaderPaint, strokePaint } from './gfx';
@@ -24,6 +25,12 @@ const lowHpPaint = shaderPaint(radial(
   ['rgba(255,30,30,0)', 'rgba(255,30,30,0)', 'rgba(255,30,30,0.6)'], [0, 0.5, 1],
 ));
 export const LOW_HP_RATIO = 0.25;
+// Laser beam layers, all additive
+const beamPaints = ['rgba(190,80,255,0.28)', 'rgba(225,160,255,0.6)', 'rgba(255,255,255,0.95)'].map(col => {
+  const p = fillPaint(col);
+  p.setBlendMode(BlendMode.Plus);
+  return p;
+});
 const sparkPaint = strokePaint('#ffd98a', 1.5);
 sparkPaint.setStrokeCap(StrokeCap.Round);
 sparkPaint.setBlendMode(BlendMode.Plus);
@@ -151,6 +158,17 @@ const drawEnemyBullet = (c: SkCanvas, S: Sprites, b: EnemyBullet, frameCount: nu
 const BOSS_CORE: Array<[x: number, y: number]> = [[0.66, 0.2], [0.5, 0.28], [0.45, 0.5], [0.39, 0.5]];
 
 const drawEnemy = (c: SkCanvas, S: Sprites, e: Enemy, frameCount: number) => {
+  if (e.type === EnemyType.TELEPORTER && e.mode === 2) {
+    // The blink destination is marked with a tightening ring; the ship itself flickers
+    const t = 1 - e.timer / TELEPORT_WARNING_FRAMES;
+    const dx = e.targetX + e.width / 2;
+    const dy = e.baseY + e.height / 2;
+    ringPaint.setAlphaf(0.4 + 0.5 * t);
+    ringPaint.setStrokeWidth(1.5);
+    c.drawCircle(dx, dy, 34 - 16 * t, ringPaint);
+    blit(c, S.powerUpGlows.pierce, dx, dy, 30 + 20 * t, additivePaint, 0.3 + 0.5 * t);
+    if (Math.floor(frameCount / 2) % 2 === 0) return;
+  }
   drawShadow(c, e.x, e.y, e.width, e.height);
   const dashing = e.type === EnemyType.RUSHER && e.mode === 2;
   const glows = ENEMY_GLOWS[e.type].map(([gx, gy, size]) => [gx, gy, dashing ? size * 1.6 : size] as [number, number, number]);
@@ -316,6 +334,18 @@ export const renderFrame = (state: GameState): SkPicture =>
       const blink = left < 120 && Math.floor(left / 6) % 2 === 0;
       const pulse = 0.5 + 0.5 * Math.sin(f * 0.15);
       if (!blink) blit(c, S.shieldBubble, plane.x + plane.width / 2 + 2, plane.y + plane.height / 2, 82 + 6 * pulse, additivePaint, 0.7 + 0.25 * pulse);
+    }
+
+    if (playerAlive && state.beam) {
+      const box = beamBox(plane);
+      const elapsed = BEAM_FRAMES - state.beam.frames;
+      // Swell in, hold with a shimmer, then thin out
+      const env = Math.min(1, elapsed / 4, state.beam.frames / 6) * (0.9 + 0.1 * Math.sin(f * 2.2));
+      const cy = box.y + box.height / 2;
+      [26, 12, 4].forEach((h, i) => {
+        c.drawRect({ x: box.x, y: cy - (h * env) / 2, width: box.width, height: h * env }, beamPaints[i]);
+      });
+      blit(c, S.flash, box.x + 2, cy, 46 * env, additivePaint, 0.95);
     }
 
     state.bullets.forEach(b => {

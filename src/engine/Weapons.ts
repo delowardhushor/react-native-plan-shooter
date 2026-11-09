@@ -1,6 +1,10 @@
-export type MissileType = 'homing' | 'blast' | 'lance';
+export type MissileType = 'homing' | 'blast' | 'lance' | 'laser';
 
-export const MISSILE_TYPES: MissileType[] = ['homing', 'blast', 'lance'];
+export const MISSILE_TYPES: MissileType[] = ['homing', 'blast', 'lance', 'laser'];
+
+// The laser is a beam, not a projectile: it burns for BEAM_FRAMES, hurting everything in line every BEAM_TICK frames
+export const BEAM_FRAMES = 36;
+export const BEAM_TICK = 6;
 export const MAX_CANNON_LEVEL = 5;
 export const MAX_MISSILE_LEVEL = 4;
 
@@ -34,6 +38,7 @@ interface MissileInfo {
   baseDamage: number;
   baseCooldown: number; // frames
   baseRadius: number;   // blast radius, 0 = none
+  damageStep?: number;  // damage gained per upgrade level (default 1)
   color: string;
 }
 
@@ -53,13 +58,18 @@ export const MISSILES: Record<MissileType, MissileInfo> = {
     unlockCost: 1200, size: { width: 40, height: 6 }, speed: 20,
     baseDamage: 3, baseCooldown: 100, baseRadius: 0, color: '#5fe3ff',
   },
+  laser: {
+    name: 'LASER', blurb: 'A burning beam that sweeps everything ahead and cuts through enemy fire',
+    unlockCost: 2200, size: { width: 36, height: 10 }, speed: 0,
+    baseDamage: 1, baseCooldown: 130, baseRadius: 0, damageStep: 0.5, color: '#c85bff',
+  },
 };
 
 export const missileStats = (type: MissileType, level: number) => {
   const m = MISSILES[type];
   const up = Math.min(level, MAX_MISSILE_LEVEL) - 1;
   return {
-    damage: m.baseDamage + up,
+    damage: m.baseDamage + up * (m.damageStep ?? 1),
     cooldown: m.baseCooldown - up * 14,
     radius: m.baseRadius ? m.baseRadius + up * 10 : 0,
     speed: m.speed,

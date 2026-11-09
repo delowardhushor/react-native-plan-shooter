@@ -47,6 +47,7 @@ export const defaultProgress = (): Progress => ({
     homing: { owned: true, level: 1 },
     blast: { owned: false, level: 1 },
     lance: { owned: false, level: 1 },
+    laser: { owned: false, level: 1 },
   },
   equipped: 'homing',
   bestScore: 0,
@@ -78,6 +79,7 @@ export const loadProgress = async (): Promise<Progress> => {
         homing: { ...base.missiles.homing, ...saved.missiles?.homing },
         blast: { ...base.missiles.blast, ...saved.missiles?.blast },
         lance: { ...base.missiles.lance, ...saved.missiles?.lance },
+        laser: { ...base.missiles.laser, ...saved.missiles?.laser },
       },
     };
   } catch {

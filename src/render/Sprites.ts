@@ -353,6 +353,20 @@ const MINER_PALETTE: JetPalette = {
   canopy: ['#e8ffd0', '#4aa02a'], accent: '#9aff3a',
 };
 
+// Splitter: sun-orange hull with a dark seam where it will break in two
+const SPLITTER_PALETTE: JetPalette = {
+  bodyTop: '#ffe2a8', bodyMid: '#e8902c', bodyLow: '#5e2e0c',
+  wingNear: ['#ffb450', '#7a3a0e'], wingFar: '#4a240a', fin: '#f0a040',
+  canopy: ['#fff6d0', '#d4601a'], accent: '#fff060',
+};
+
+// Teleporter: ghost-white hull with hot pink trim
+const TELEPORTER_PALETTE: JetPalette = {
+  bodyTop: '#f4f6ff', bodyMid: '#8e9ce6', bodyLow: '#2b3274',
+  wingNear: ['#b8c2fa', '#3a4290'], wingFar: '#242a62', fin: '#a9b5f4',
+  canopy: ['#fff0fb', '#d03fb0'], accent: '#ff5fd0',
+};
+
 // Swept delta wing: small and quick as the rusher, larger with wing pods as the Phantom boss
 const drawDelta = (c: SkCanvas, pal: JetPalette, boss: boolean) => {
   c.drawPath(poly([[30, 9], [14, 0.5], [8, 0.5], [16, 9]]), fillPaint(pal.wingFar));
@@ -534,6 +548,8 @@ export const ENEMY_FRAMES: Record<EnemyType, Frame> = {
   [EnemyType.AEGIS]: JET_FRAME,
   [EnemyType.SWARM]: DELTA_FRAME,
   [EnemyType.MINELAYER]: BOMBER_FRAME,
+  [EnemyType.SPLITTER]: JET_FRAME,
+  [EnemyType.TELEPORTER]: DELTA_FRAME,
 };
 
 export const ENEMY_GLOWS: Record<EnemyType, Glows> = {
@@ -546,6 +562,8 @@ export const ENEMY_GLOWS: Record<EnemyType, Glows> = {
   [EnemyType.AEGIS]: [[2, 13.5, 24]],
   [EnemyType.SWARM]: [[2, 10, 22]],
   [EnemyType.MINELAYER]: [[3, 19.5, 20], [28, 32, 16]],
+  [EnemyType.SPLITTER]: [[2, 13.5, 22]],
+  [EnemyType.TELEPORTER]: [[2, 10, 20]],
 };
 
 export const BOSS_FRAMES: Frame[] = [GUNSHIP_FRAME, BOMBER_FRAME, DELTA_FRAME, TITAN_FRAME];
@@ -593,7 +611,20 @@ const drawLanceMissile = (c: SkCanvas) => {
   c.drawPath(poly([[32, 0.6], [40, 3], [32, 5.4]]), fillPaint('#ffffff'));
 };
 
+// Laser emitter icon: a violet-white beam capsule with a bright lens
+const drawLaserMissile = (c: SkCanvas) => {
+  const glow = Skia.Paint();
+  glow.setColor(Skia.Color('#c85bff'));
+  glow.setMaskFilter(Skia.MaskFilter.MakeBlur(BlurStyle.Normal, 2.8, true));
+  c.drawRRect(Skia.RRectXY(Skia.XYWHRect(3, 1.5, 30, 7), 3.5, 3.5), glow);
+  c.drawRRect(Skia.RRectXY(Skia.XYWHRect(1, 3, 34, 4), 2, 2),
+    shaderPaint(linear(0, 0, 36, 0, ['rgba(200,91,255,0.3)', '#e2a8ff', '#ffffff'], [0, 0.55, 1])));
+  c.drawRRect(Skia.RRectXY(Skia.XYWHRect(0, 2, 8, 6), 2, 2), fillPaint('#3a2a52'));
+  c.drawCircle(33, 5, 2.6, fillPaint('#ffffff'));
+};
+
 const MISSILE_DRAW: Record<MissileType, (c: SkCanvas) => void> = {
+  laser: drawLaserMissile,
   homing: drawHomingMissile,
   blast: drawBlastMissile,
   lance: drawLanceMissile,
@@ -764,6 +795,8 @@ export const getSprites = (): Sprites => {
       [EnemyType.AEGIS]: record(JET_FRAME.width, JET_FRAME.height, c => drawJet(c, AEGIS_PALETTE)),
       [EnemyType.SWARM]: record(DELTA_FRAME.width, DELTA_FRAME.height, c => drawDelta(c, SWARM_PALETTE, false)),
       [EnemyType.MINELAYER]: record(BOMBER_FRAME.width, BOMBER_FRAME.height, c => drawBomber(c, MINER_PALETTE, false)),
+      [EnemyType.SPLITTER]: record(JET_FRAME.width, JET_FRAME.height, c => drawJet(c, SPLITTER_PALETTE)),
+      [EnemyType.TELEPORTER]: record(DELTA_FRAME.width, DELTA_FRAME.height, c => drawDelta(c, TELEPORTER_PALETTE, false)),
     },
     bosses: [
       record(GUNSHIP_FRAME.width, GUNSHIP_FRAME.height, c => drawGunship(c, BOSS_PALETTE, true)),
@@ -775,6 +808,7 @@ export const getSprites = (): Sprites => {
       homing: record(MISSILES.homing.size.width, MISSILES.homing.size.height, MISSILE_DRAW.homing),
       blast: record(MISSILES.blast.size.width, MISSILES.blast.size.height, MISSILE_DRAW.blast),
       lance: record(MISSILES.lance.size.width, MISSILES.lance.size.height, MISSILE_DRAW.lance),
+      laser: record(MISSILES.laser.size.width, MISSILES.laser.size.height, MISSILE_DRAW.laser),
     },
     medic: record(MEDIC_FRAME.width, MEDIC_FRAME.height, drawMedic),
     rocket: record(ROCKET_FRAME.width, ROCKET_FRAME.height, drawRocket),
