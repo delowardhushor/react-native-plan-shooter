@@ -11,8 +11,33 @@ export interface SpawnEntry {
   max: number; // on screen at once
 }
 
+// Most levels are a plain "destroy N planes" stage; every so often the campaign changes pace:
+//  - survival: no kill quota, just stay alive until the clock runs out while the pressure builds
+//  - bonus:    a breather packed with weak fighters, double score and power-up crates
+export type LevelMode = 'normal' | 'boss' | 'survival' | 'bonus';
+
+export const levelMode = (level: number): LevelMode =>
+  isBossLevel(level) ? 'boss'
+    : level >= 5 && level % 6 === 5 ? 'survival'
+      : level >= 8 && level % 6 === 2 ? 'bonus'
+        : 'normal';
+
+export const MODE_INFO: Record<LevelMode, { name: string; color: string }> = {
+  normal: { name: '', color: '' },
+  boss: { name: 'BOSS', color: '#ff4a3d' },
+  survival: { name: 'SURVIVAL', color: '#ff9d3d' },
+  bonus: { name: 'BONUS RUN', color: '#3ecf7a' },
+};
+
+// Frames to hold out in a survival level (about 54s on the first one, creeping up to 80s)
+export const surviveFramesFor = (level: number) => 3000 + Math.min(1800, level * 50);
+
+export const BONUS_SCORE_MULTIPLIER = 2;
+
 export interface LevelConfig {
   level: number;
+  mode: LevelMode;
+  surviveFrames: number;    // survival levels only
   isBoss: boolean;
   bossIndex: number;        // 1 for the first boss, 2 for the second...
   killTarget: number;       // enemies to destroy (before the boss appears on boss levels)
@@ -70,6 +95,8 @@ export const getLevelConfig = (level: number): LevelConfig => {
   const hard = Math.max(0, level - (HARD_FROM - 1));
   return {
     level,
+    mode: levelMode(level),
+    surviveFrames: levelMode(level) === 'survival' ? surviveFramesFor(level) : 0,
     isBoss,
     bossIndex,
     killTarget: isBoss ? 6 : Math.min(8 + level * 2, 26) + Math.min(10, hard),
@@ -82,4 +109,23 @@ export const getLevelConfig = (level: number): LevelConfig => {
     enemyHpMul: 1 + Math.min(4, hard * 0.08),
     bossHp: Math.round((45 + (bossIndex - 1) * 20) * (1 + Math.min(2, hard * 0.03))),
   };
+};
+
+// Reshapes a level's pacing for its mode. Kept separate from getLevelConfig so the base difficulty curve
+// stays one clean formula; the game applies this when a run starts.
+export const applyMode = (c: LevelConfig): LevelConfig => {
+  if (c.mode === 'survival') {
+    return { ...c, spawnInterval: Math.round(c.spawnInterval * 0.65), maxEnemies: c.maxEnemies + 2 };
+  }
+  if (c.mode === 'bonus') {
+    return {
+      ...c,
+      killTarget: 50,
+      spawnInterval: 20,
+      maxEnemies: 9,
+      enemySpeed: c.enemySpeed + 0.3,
+      roster: [{ type: EnemyType.STANDARD, weight: 10, max: 99 }],
+    };
+  }
+  return c;
 };

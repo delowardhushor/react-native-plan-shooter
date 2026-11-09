@@ -6,11 +6,11 @@ import {
 } from './Constants';
 import { medicHeal } from './Armor';
 import { PROJECTILES, type ProjectileKind } from './Projectiles';
-import { getLevelConfig, newEnemiesAt, type LevelConfig } from './Levels';
+import { BONUS_SCORE_MULTIPLIER, applyMode, getLevelConfig, newEnemiesAt, type LevelConfig } from './Levels';
 import { cannonStats, missileStats, type MissileType } from './Weapons';
 import {
   POWERUPS, POWERUP_KINDS, noPowerUps, RAPID_FIRE_FACTOR, PIERCE_DAMAGE, SHIELD_BREAK_INVULNERABLE_FRAMES, WINGMAN_OFFSET,
-  DROP_CHANCE_SMALL, DROP_CHANCE_BIG, DROP_PITY_KILLS, type ActivePowerUps, type PowerUpKind,
+  DROP_CHANCE_SMALL, DROP_CHANCE_BIG, DROP_PITY_KILLS, DROP_CHANCE_BONUS, DROP_PITY_BONUS, type ActivePowerUps, type PowerUpKind,
 } from './PowerUps';
 import {
   BOMB_MAX, BOMB_START, BOMB_PER_KILL, BOMB_PER_BIG_KILL, BOMB_BOSS_TRICKLE, BOMB_LOCK_FRAMES,
@@ -210,8 +210,18 @@ export type SoundFn = (type: 'shoot' | 'hit' | 'destroy' | 'hurt' | 'pickup' | '
 
 const GROUND_Y = SCREEN_HEIGHT - GROUND_HEIGHT;
 
+const bannerSub = (config: LevelConfig) => {
+  const fresh = newEnemiesAt(config.level).map(t => ENEMY_NAMES[t]).join(' + ');
+  switch (config.mode) {
+    case 'boss': return 'BOSS BATTLE AHEAD';
+    case 'survival': return `${fresh ? `NEW ENEMY: ${fresh}  ·  ` : ''}SURVIVE ${Math.round(config.surviveFrames / 60)} SECONDS`;
+    case 'bonus': return 'BONUS RUN  ·  DOUBLE SCORE';
+    default: return fresh ? `NEW ENEMY: ${fresh}` : `DESTROY ${config.killTarget} ENEMY PLANES`;
+  }
+};
+
 export const createInitialState = (level: number, loadout: Loadout): GameState => {
-  const config = getLevelConfig(level);
+  const config = applyMode(getLevelConfig(level));
   return {
     plane: {
       x: 20,
@@ -250,11 +260,7 @@ export const createInitialState = (level: number, loadout: Loadout): GameState =
     dropPity: 0,
     banner: {
       title: `LEVEL ${level}`,
-      sub: config.isBoss
-        ? 'BOSS BATTLE AHEAD'
-        : newEnemiesAt(level).length
-          ? `NEW ENEMY: ${newEnemiesAt(level).map(t => ENEMY_NAMES[t]).join(' + ')}`
-          : `DESTROY ${config.killTarget} ENEMY PLANES`,
+      sub: bannerSub(config),
     },
     bannerTimer: 150,
     score: 0,
@@ -1179,7 +1185,9 @@ const resolveShots = (s: GameState, onSound: SoundFn) => {
 const maybeDropPowerUp = (s: GameState, from: Box, big: boolean) => {
   s.dropPity += 1;
   if (s.pickups.some(p => p.kind !== 'medic')) return;
-  if (s.dropPity < DROP_PITY_KILLS && Math.random() >= (big ? DROP_CHANCE_BIG : DROP_CHANCE_SMALL)) return;
+  const bonus = s.config.mode === 'bonus';
+  const chance = bonus ? DROP_CHANCE_BONUS : big ? DROP_CHANCE_BIG : DROP_CHANCE_SMALL;
+  if (s.dropPity < (bonus ? DROP_PITY_BONUS : DROP_PITY_KILLS) && Math.random() >= chance) return;
   s.dropPity = 0;
 
   // Prefer a boost that isn't already running at full strength
@@ -1206,7 +1214,7 @@ const reapEnemies = (s: GameState, onSound: SoundFn) => {
     s.combo += 1;
     s.comboTimer = COMBO_WINDOW;
     s.bestCombo = Math.max(s.bestCombo, s.combo);
-    if (s.bombLock === 0) s.bomb = Math.min(BOMB_MAX, s.bomb + (def.boom > 1.2 ? BOMB_PER_BIG_KILL : BOMB_PER_KILL));
+    if (s.bombLock === 0) s.bomb = Math.min(BOMB_MAX, s.bomb + (def.boom > 1.2 ? BOMB_PER_BIG_KILL : BOMB_PER_KILL) * (s.config.mode === 'bonus' ? 2 : 1));
     if (s.combo === ON_FIRE_COMBO && s.plane.alive) {
       const px = s.plane.x + s.plane.width / 2;
       const py = s.plane.y + s.plane.height / 2;
@@ -1216,7 +1224,7 @@ const reapEnemies = (s: GameState, onSound: SoundFn) => {
     }
     if (s.combo % SALVO_EVERY === 0 && s.plane.alive) fireSalvo(s);
     const mult = comboMultiplier(s.combo);
-    const points = def.score * mult;
+    const points = def.score * mult * (s.config.mode === 'bonus' ? BONUS_SCORE_MULTIPLIER : 1);
     s.score += points;
     s.kills += 1;
     s.stats.killsByType[e.type] = (s.stats.killsByType[e.type] ?? 0) + 1;
@@ -1424,7 +1432,9 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
   if (s.spawnTimer <= 0 && spawnAllowed) {
     if (s.enemies.length < config.maxEnemies) {
       spawnEnemy(s);
-      s.spawnTimer = config.spawnInterval * (s.bossState ? 1.7 : 1) * rand(0.85, 1.2);
+      // Survival: the longer you last, the faster they come (down to about 65% of the starting gap)
+      const ramp = config.mode === 'survival' ? 1 - 0.35 * Math.min(1, s.frameCount / config.surviveFrames) : 1;
+      s.spawnTimer = config.spawnInterval * ramp * (s.bossState ? 1.7 : 1) * rand(0.85, 1.2);
     }
   }
 
@@ -1439,7 +1449,9 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
   reapEnemies(s, onSound);
   resolvePlayerHits(s, onSound);
 
-  if (s.status === 'playing' && !config.isBoss && s.kills >= config.killTarget) {
-    winLevel(s);
+  if (s.status === 'playing') {
+    const survived = config.mode === 'survival' && s.frameCount >= config.surviveFrames;
+    const quota = config.mode !== 'survival' && !config.isBoss && s.kills >= config.killTarget;
+    if (survived || quota) winLevel(s);
   }
 };

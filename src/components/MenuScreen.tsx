@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { COLOR_ACCENT, COLOR_TEXT } from '../engine/Constants';
 import { bossTitle } from '../engine/Enemies';
-import { BOSS_EVERY, getLevelConfig, isBossLevel } from '../engine/Levels';
+import { BOSS_EVERY, MODE_INFO, getLevelConfig, isBossLevel } from '../engine/Levels';
 import { MAX_ARMOR_LEVEL, armorUpgradeCost } from '../engine/Armor';
 import {
   MAX_CANNON_LEVEL, MAX_MISSILE_LEVEL, MISSILES, MISSILE_TYPES, cannonUpgradeCost, missileUpgradeCost,
@@ -156,6 +156,12 @@ export const MenuScreen = ({ progress, onPlay, onUpgrades, onSkins, onCampaign, 
           {cfg.isBoss ? (
             <View style={styles.bossTag}>
               <Text style={styles.bossTagText}>BOSS · {bossTitle(cfg.bossIndex)}</Text>
+            </View>
+          ) : cfg.mode === 'survival' || cfg.mode === 'bonus' ? (
+            <View style={[styles.bossTag, { borderColor: MODE_INFO[cfg.mode].color, backgroundColor: `${MODE_INFO[cfg.mode].color}33` }]}>
+              <Text style={[styles.bossTagText, { color: MODE_INFO[cfg.mode].color }]}>
+                {cfg.mode === 'survival' ? `SURVIVAL · ${Math.round(cfg.surviveFrames / 60)}S` : 'BONUS RUN · 2X SCORE'}
+              </Text>
             </View>
           ) : (
             <Text style={styles.objective}>DESTROY {cfg.killTarget} ENEMY PLANES</Text>

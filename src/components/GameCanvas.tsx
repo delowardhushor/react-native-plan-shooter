@@ -229,11 +229,19 @@ export const GameCanvas = (props: Props) => {
   const missileInfo = MISSILES[s.loadout.missile];
 
   const bossFight = !!s.boss && s.boss.dying === 0;
-  const progressLabel = cfg.isBoss && s.kills >= cfg.killTarget ? 'BOSS' : cfg.isBoss ? 'WARM-UP' : 'ENEMIES';
-  const progressValue = bossFight && s.boss
-    ? Math.max(0, s.boss.hp) / s.boss.maxHp
-    : cfg.isBoss && s.bossState > 0 ? 1 : Math.min(1, s.kills / cfg.killTarget);
-  const progressText = bossFight ? '' : `${Math.min(s.kills, cfg.killTarget)}/${cfg.killTarget}`;
+  const survival = cfg.mode === 'survival';
+  const progressLabel = survival ? 'SURVIVE'
+    : cfg.isBoss && s.kills >= cfg.killTarget ? 'BOSS'
+      : cfg.isBoss ? 'WARM-UP'
+        : cfg.mode === 'bonus' ? 'BONUS' : 'ENEMIES';
+  const progressValue = survival
+    ? Math.min(1, s.frameCount / cfg.surviveFrames)
+    : bossFight && s.boss
+      ? Math.max(0, s.boss.hp) / s.boss.maxHp
+      : cfg.isBoss && s.bossState > 0 ? 1 : Math.min(1, s.kills / cfg.killTarget);
+  const progressText = survival
+    ? `${Math.max(0, Math.ceil((cfg.surviveFrames - s.frameCount) / 60))}s`
+    : bossFight ? '' : `${Math.min(s.kills, cfg.killTarget)}/${cfg.killTarget}`;
 
   const hullRatio = s.hp / s.maxHp;
   const hullColor = hullRatio > 0.5 ? '#4cd97b' : hullRatio > 0.25 ? '#ffb23e' : '#ff4d5a';
@@ -405,7 +413,9 @@ export const GameCanvas = (props: Props) => {
         <View style={[styles.overlayLayer, styles.dim]}>
           <Panel style={styles.card}>
             <Text style={[styles.title, result.won ? styles.winTitle : styles.loseTitle]}>
-              {result.won ? (cfg.isBoss ? 'BOSS DEFEATED!' : 'LEVEL COMPLETE') : 'MISSION FAILED'}
+              {result.won
+                ? (cfg.isBoss ? 'BOSS DEFEATED!' : survival ? 'SURVIVED!' : cfg.mode === 'bonus' ? 'BONUS COMPLETE' : 'LEVEL COMPLETE')
+                : 'MISSION FAILED'}
             </Text>
             <Text style={styles.stats}>LEVEL {s.level}  ·  SCORE {s.score}  ·  KILLS {s.kills}</Text>
             {result.won && (

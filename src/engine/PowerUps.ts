@@ -35,3 +35,6 @@ export const WINGMAN_OFFSET = 26;
 export const DROP_CHANCE_SMALL = 0.07;
 export const DROP_CHANCE_BIG = 0.3;
 export const DROP_PITY_KILLS = 14;
+// Bonus runs shower the player with crates
+export const DROP_CHANCE_BONUS = 0.3;
+export const DROP_PITY_BONUS = 5;

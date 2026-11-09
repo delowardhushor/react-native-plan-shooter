@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { COLOR_ACCENT, COLOR_TEXT, SCREEN_WIDTH } from '../engine/Constants';
 import { bossTitle } from '../engine/Enemies';
-import { BOSS_EVERY, isBossLevel } from '../engine/Levels';
+import { BOSS_EVERY, MODE_INFO, isBossLevel, levelMode } from '../engine/Levels';
 import { biomeAccentFor, biomeNameFor } from '../render/Backdrop';
 import { MAX_STARS, REPLAY_REWARD_FACTOR, equippedSkin, isCleared, starsFor, type Progress } from '../state/Progress';
 import { MenuBackdrop } from './MenuBackdrop';
@@ -32,7 +32,9 @@ const LevelNode = ({ level, progress, accent, onPress }: NodeProps) => {
   const locked = !cleared && !current;
   const stars = starsFor(progress, level);
   const bossName = boss ? bossTitle(level / BOSS_EVERY) : '';
-  const tone = boss ? '#ff4a3d' : accent;
+  const mode = levelMode(level);
+  const special = mode === 'survival' || mode === 'bonus';
+  const tone = boss ? '#ff4a3d' : special ? MODE_INFO[mode].color : accent;
 
   return (
     <TouchableOpacity activeOpacity={0.8} disabled={locked} onPress={onPress} style={styles.nodeWrap}>
@@ -58,6 +60,7 @@ const LevelNode = ({ level, progress, accent, onPress }: NodeProps) => {
         {cleared ? <Stars count={stars} size={13} /> : current ? <Text style={[styles.playTag, { color: tone }]}>PLAY</Text> : null}
       </View>
       {boss && <Text style={[styles.bossName, locked && styles.dim]}>{bossName}</Text>}
+      {special && <Text style={[styles.bossName, { color: tone }, locked && styles.dim]}>{MODE_INFO[mode].name}</Text>}
     </TouchableOpacity>
   );
 };
