@@ -1,6 +1,7 @@
 import { Skia, BlurStyle, ClipOp, type SkCanvas, type SkImage, type SkPicture } from '@shopify/react-native-skia';
 import { MISSILES, type MissileType } from '../engine/Weapons';
 import { EnemyType } from '../engine/Enemies';
+import { POWERUPS, POWERUP_KINDS, type PowerUpKind } from '../engine/PowerUps';
 import { skinById, type HeroPalette } from '../engine/Skins';
 import { bake, fillPaint, linear, poly, radial, record, shaderPaint, strokePaint } from './gfx';
 
@@ -613,6 +614,40 @@ const drawMedic = (c: SkCanvas) => {
   c.drawLine(5, 3.6, 23, 3.6, strokePaint('rgba(255,255,255,0.7)', 1));
 };
 
+// Power-up crates: a dark capsule edged in the boost's colour with a glowing glyph
+const POWERUP_GLYPH: Record<PowerUpKind, (c: SkCanvas, color: string) => void> = {
+  rapid: (c, col) => c.drawPath(poly([[16, 4], [8, 15], [13, 15], [11, 24], [20, 12], [15, 12]]), fillPaint(col)),
+  shield: (c, col) => {
+    c.drawPath(poly([[14, 5], [21, 8], [20, 16], [14, 23], [8, 16], [7, 8]]), fillPaint(col));
+    c.drawPath(poly([[14, 8], [18, 10], [17.4, 15], [14, 19.5], [10.6, 15], [10, 10]]), fillPaint('rgba(10,24,40,0.55)'));
+  },
+  pierce: (c, col) => c.drawPath(poly([[5, 10.5], [14, 10.5], [14, 6.5], [23, 14], [14, 21.5], [14, 17.5], [5, 17.5]]), fillPaint(col)),
+  wingman: (c, col) => {
+    c.drawPath(poly([[6, 7.5], [21, 10], [6, 12.5]]), fillPaint(col));
+    c.drawPath(poly([[6, 15.5], [21, 18], [6, 20.5]]), fillPaint(col));
+  },
+};
+
+const drawPowerUp = (c: SkCanvas, kind: PowerUpKind) => {
+  const col = POWERUPS[kind].color;
+  c.drawRRect(Skia.RRectXY(Skia.XYWHRect(1.5, 1.5, 25, 25), 8, 8),
+    shaderPaint(linear(0, 1.5, 0, 26.5, ['#2b3a52', '#121c2e'])));
+  c.drawRRect(Skia.RRectXY(Skia.XYWHRect(1.5, 1.5, 25, 25), 8, 8), strokePaint(col, 1.8));
+  c.drawLine(6, 3.6, 22, 3.6, strokePaint('rgba(255,255,255,0.45)', 1));
+  POWERUP_GLYPH[kind](c, col);
+};
+
+export const DRONE_FRAME = { width: 22, height: 10 };
+
+// Wingman drone: a small cyan-and-white escort jet
+const drawDrone = (c: SkCanvas) => {
+  c.drawPath(poly([[8, 3], [3, 0], [1, 0], [4, 4]]), fillPaint('#2a4a6a'));
+  c.drawPath(poly([[8, 7], [3, 10], [1, 10], [4, 6]]), fillPaint('#1d3752'));
+  c.drawOval(Skia.XYWHRect(2, 2, 19, 6), shaderPaint(linear(0, 2, 0, 8, ['#f2fbff', '#6dffa0', '#1d6a52'], [0, 0.5, 1])));
+  c.drawOval(Skia.XYWHRect(12, 3, 5, 3), fillPaint('#b8f4ff'));
+  c.drawLine(4, 5, 11, 5, strokePaint('rgba(10,40,40,0.5)', 0.8));
+};
+
 // Unguided warhead: grey body, orange band, red nose, flame at the tail
 const drawRocket = (c: SkCanvas) => {
   c.drawPath(poly([[0, 4], [5, 1.4], [5, 6.6]]), fillPaint('#ffb43a'));
@@ -658,6 +693,11 @@ export interface Sprites {
   bolt: SkImage;
   orb: SkImage;
   healGlow: SkImage;
+  powerUps: Record<PowerUpKind, SkPicture>;
+  powerUpGlows: Record<PowerUpKind, SkImage>;
+  shieldBubble: SkImage;
+  fireGlow: SkImage;
+  drone: SkPicture;
   bullet: SkImage;
   enemyBullet: SkImage;
   flash: SkImage;
@@ -693,6 +733,19 @@ export const getSprites = (): Sprites => {
   const orb = glowImage(48, ['#ffffff', '#ffd0b0', 'rgba(255,80,50,0.95)', 'rgba(200,20,30,0)'], [0, 0.2, 0.55, 1]);
   const healGlow = glowImage(64, ['rgba(220,255,230,0.95)', 'rgba(90,255,160,0.5)', 'rgba(40,220,120,0)'], [0, 0.4, 1]);
 
+  const powerUpGlows = Object.fromEntries(POWERUP_KINDS.map(k => {
+    const col = POWERUPS[k].color;
+    return [k, glowImage(64, [hexAlpha(col, 0.95), hexAlpha(col, 0.5), hexAlpha(col, 0)], [0, 0.4, 1])];
+  })) as Record<PowerUpKind, SkImage>;
+  const powerUps = Object.fromEntries(POWERUP_KINDS.map(k => [
+    k, record(MEDIC_FRAME.width, MEDIC_FRAME.height, c => drawPowerUp(c, k)),
+  ])) as Record<PowerUpKind, SkPicture>;
+  const shieldBubble = glowImage(96, [
+    'rgba(120,220,255,0.04)', 'rgba(120,220,255,0.16)', 'rgba(170,240,255,0.85)', 'rgba(120,220,255,0)',
+  ], [0, 0.62, 0.86, 1]);
+
+  const fireGlow = glowImage(64, ['rgba(255,240,170,0.9)', 'rgba(255,140,40,0.55)', 'rgba(255,60,20,0)'], [0, 0.4, 1]);
+
   const enemyBullet = glowImage(28, ['#ffffff', '#ffd9a0', 'rgba(255,90,40,0.9)', 'rgba(255,40,20,0)'], [0, 0.2, 0.5, 1]);
   const flash = glowImage(64, ['#ffffff', 'rgba(255,238,170,0.9)', 'rgba(255,170,60,0.35)', 'rgba(255,120,30,0)'], [0, 0.25, 0.6, 1]);
   const engineGlow = glowImage(48, ['rgba(255,255,255,0.95)', 'rgba(130,200,255,0.7)', 'rgba(255,150,50,0.35)', 'rgba(255,100,20,0)'], [0, 0.18, 0.5, 1]);
@@ -726,7 +779,8 @@ export const getSprites = (): Sprites => {
     medic: record(MEDIC_FRAME.width, MEDIC_FRAME.height, drawMedic),
     rocket: record(ROCKET_FRAME.width, ROCKET_FRAME.height, drawRocket),
     seeker: record(SEEKER_FRAME.width, SEEKER_FRAME.height, drawSeeker),
-    bolt, orb, healGlow,
+    bolt, orb, healGlow, powerUps, powerUpGlows, shieldBubble, fireGlow,
+    drone: record(DRONE_FRAME.width, DRONE_FRAME.height, drawDrone),
     bullet, enemyBullet, flash, engineGlow, engineGlowCyan, fire, smoke,
   };
   return cache;

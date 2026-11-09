@@ -5,23 +5,27 @@ import { COLOR_TEXT, COLOR_PANEL_BORDER } from '../engine/Constants';
 interface ControlsOverlayProps {
   onDirectionChange: (dx: number, dy: number) => void;
   onMissileFire: () => void;
+  onBomb: () => void;
+  bombCharge: number; // 0..1
   missileCharge: number; // 0..1
   missileLabel: string;
   missileColor: string;
 }
 
 const MAX_DIST = 45;
+const BOMB_COLOR = '#ffb23e';
 
 // Raw touch events (not PanResponder/Touchable) are used on purpose: React Native's responder system
 // grants only ONE active responder, so a held movement finger would block the missile button.
 // Raw events are delivered per-finger, so steering and firing work at the same time.
 export const ControlsOverlay: React.FC<ControlsOverlayProps> = ({
-  onDirectionChange, onMissileFire, missileCharge, missileLabel, missileColor,
+  onDirectionChange, onMissileFire, onBomb, bombCharge, missileCharge, missileLabel, missileColor,
 }) => {
   const moveId = useRef<string | null>(null);
   const centerRef = useRef({ x: 0, y: 0 });
   const stopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [firing, setFiring] = useState(false);
+  const [bombing, setBombing] = useState(false);
 
   const clearStop = () => {
     if (stopTimer.current) clearTimeout(stopTimer.current);
@@ -83,6 +87,7 @@ export const ControlsOverlay: React.FC<ControlsOverlayProps> = ({
   };
 
   const ready = missileCharge >= 1;
+  const bombReady = bombCharge >= 1;
 
   return (
     <View style={styles.container} pointerEvents="box-none">
@@ -94,6 +99,27 @@ export const ControlsOverlay: React.FC<ControlsOverlayProps> = ({
         onTouchEnd={onSurfaceEnd}
         onTouchCancel={onSurfaceEnd}
       />
+
+      {/* Bomb: charged by kills, sits left of the missile button */}
+      <View
+        style={styles.bombZone}
+        onTouchStart={() => { setBombing(true); onBomb(); }}
+        onTouchEnd={() => setBombing(false)}
+        onTouchCancel={() => setBombing(false)}
+      >
+        <View
+          style={[
+            styles.bombBtn,
+            { borderColor: bombReady ? BOMB_COLOR : COLOR_PANEL_BORDER, shadowColor: BOMB_COLOR, shadowOpacity: bombReady ? 0.95 : 0.2 },
+            bombing && styles.missilePressed,
+          ]}
+          pointerEvents="none"
+        >
+          <View style={[styles.cooldown, { height: `${(1 - bombCharge) * 100}%` }]} />
+          <Text style={[styles.btnText, bombReady && { color: BOMB_COLOR }]}>BOMB</Text>
+          <Text style={styles.btnSub}>{bombReady ? 'TAP!' : `${Math.floor(bombCharge * 100)}%`}</Text>
+        </View>
+      </View>
 
       {/* Sibling of the surface, so its touches never start a movement drag */}
       <View
@@ -132,6 +158,25 @@ const styles = StyleSheet.create({
     right: 14,
     bottom: 14,
     padding: 16,
+  },
+  bombZone: {
+    position: 'absolute',
+    right: 118,
+    bottom: 14,
+    padding: 14,
+  },
+  bombBtn: {
+    width: 62,
+    height: 62,
+    backgroundColor: 'rgba(14, 26, 40, 0.72)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    borderRadius: 31,
+    borderWidth: 2,
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 12,
+    elevation: 6,
   },
   missilePressed: {
     transform: [{ scale: 0.93 }],

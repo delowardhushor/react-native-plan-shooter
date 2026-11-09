@@ -1,11 +1,12 @@
 import { Skia, BlendMode, StrokeCap, type SkCanvas, type SkImage, type SkPicture } from '@shopify/react-native-skia';
 import { PLANE_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT } from '../engine/Constants';
 import { EnemyType } from '../engine/Enemies';
+import { isOnFire, wingmanDrones } from '../engine/GameLoop';
 import type { Boss, Enemy, EnemyBullet, GameState, Particle, Pickup } from '../engine/GameLoop';
 import { GROUND_Y, drawBackdrop, drawVignette } from './Backdrop';
 import { createPictureUnbounded, fillPaint, strokePaint } from './gfx';
 import {
-  BOSS_FRAMES, BOSS_GLOWS, ENEMY_FRAMES, ENEMY_GLOWS, HERO_TIERS, JET_FRAME, MEDIC_FRAME, ROCKET_FRAME, SEEKER_FRAME,
+  BOSS_FRAMES, BOSS_GLOWS, ENEMY_FRAMES, ENEMY_GLOWS, HERO_TIERS, JET_FRAME, MEDIC_FRAME, DRONE_FRAME, ROCKET_FRAME, SEEKER_FRAME,
   getHero, getSprites, type Sprites,
 } from './Sprites';
 
@@ -92,12 +93,16 @@ const drawPickup = (c: SkCanvas, S: Sprites, p: Pickup, frameCount: number) => {
   const cx = p.x + p.width / 2;
   const cy = p.y + p.height / 2;
   const pulse = 0.5 + 0.5 * Math.sin(frameCount * 0.12 + p.age * 0.02);
-  blit(c, S.healGlow, cx, cy, 58 + 14 * pulse, additivePaint, 0.55 + 0.35 * pulse);
+  const medic = p.kind === 'medic';
+  const glow = medic ? S.healGlow : S.powerUpGlows[p.kind as keyof typeof S.powerUpGlows];
+  const pic = medic ? S.medic : S.powerUps[p.kind as keyof typeof S.powerUps];
+  // Power-ups glow harder than medic kits so they read as a prize from across the screen
+  blit(c, glow, cx, cy, (medic ? 58 : 70) + 14 * pulse, additivePaint, 0.55 + 0.35 * pulse);
   c.save();
   c.translate(cx, cy);
   c.rotate(Math.sin(p.age * 0.05) * 6, 0, 0);
   c.translate(-MEDIC_FRAME.width / 2, -MEDIC_FRAME.height / 2);
-  c.drawPicture(S.medic);
+  c.drawPicture(pic);
   c.restore();
 };
 
@@ -257,6 +262,12 @@ export const renderFrame = (state: GameState): SkPicture =>
       c.restore();
     });
 
+    const onFire = isOnFire(state.combo);
+    if (playerAlive && onFire) {
+      const flick = 0.75 + 0.25 * Math.sin(f * 0.7);
+      blit(c, S.fireGlow, plane.x + plane.width / 2, plane.y + plane.height / 2, 96 * flick, additivePaint, 0.55);
+    }
+
     if (playerAlive && !blinkHidden) {
       const tier = Math.min(state.loadout.cannon, HERO_TIERS);
       drawAircraft(c, {
@@ -265,10 +276,32 @@ export const renderFrame = (state: GameState): SkPicture =>
       });
     }
 
+    if (playerAlive && state.powerUps.wingman > 0) {
+      const fadeOut = state.powerUps.wingman < 90 && Math.floor(state.powerUps.wingman / 6) % 2 === 0;
+      if (!fadeOut) {
+        wingmanDrones(plane, f).forEach(d => {
+          blit(c, S.engineGlow, d.x + 1, d.y + DRONE_FRAME.height / 2, 14 * (0.8 + 0.2 * Math.sin(f * 2.1)), additivePaint, 0.9);
+          c.save();
+          c.translate(d.x, d.y);
+          c.drawPicture(S.drone);
+          c.restore();
+        });
+      }
+    }
+
+    if (playerAlive && state.powerUps.shield > 0) {
+      const left = state.powerUps.shield;
+      const blink = left < 120 && Math.floor(left / 6) % 2 === 0;
+      const pulse = 0.5 + 0.5 * Math.sin(f * 0.15);
+      if (!blink) blit(c, S.shieldBubble, plane.x + plane.width / 2 + 2, plane.y + plane.height / 2, 82 + 6 * pulse, additivePaint, 0.7 + 0.25 * pulse);
+    }
+
     state.bullets.forEach(b => {
       normalPaint.setAlphaf(1);
       if (b.vy === 0) {
         c.drawImage(S.bullet, b.x + b.width - 25, b.y + b.height / 2 - 7, normalPaint);
+        if (b.hits) blit(c, S.powerUpGlows.pierce, b.x + b.width - 6, b.y + b.height / 2, 34, additivePaint, 0.85);
+        else if (onFire) blit(c, S.fireGlow, b.x + b.width - 8, b.y + b.height / 2, 30, additivePaint, 0.8);
       } else {
         c.save();
         c.rotate((Math.atan2(b.vy, b.vx) * 180) / Math.PI, b.x + b.width, b.y + b.height / 2);

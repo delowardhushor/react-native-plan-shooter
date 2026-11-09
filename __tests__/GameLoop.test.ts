@@ -1,5 +1,7 @@
-import { createInitialState, updateGameState, revivePlayer, type GameState } from '../src/engine/GameLoop';
-import { BOSS_DEFS } from '../src/engine/Enemies';
+import { createInitialState, updateGameState, revivePlayer, bombCharge, ON_FIRE_COMBO, SALVO_EVERY, type GameState } from '../src/engine/GameLoop';
+import { BOSS_DEFS, EnemyType } from '../src/engine/Enemies';
+import { POWERUPS } from '../src/engine/PowerUps';
+import { BOMB_MAX, BOMB_PER_KILL } from '../src/engine/Bomb';
 import { armorMaxHp, medicHeal } from '../src/engine/Armor';
 import { HIT_INVULNERABLE_FRAMES } from '../src/engine/Constants';
 import { PROJECTILES } from '../src/engine/Projectiles';
@@ -97,7 +99,7 @@ describe('medic pickups', () => {
   it('never heals past the maximum', () => {
     const s = createInitialState(1, loadout(1));
     s.hp = s.maxHp - 1;
-    s.pickups.push({ x: s.plane.x, y: s.plane.y, width: 28, height: 28, baseY: s.plane.y, age: 0 });
+    s.pickups.push({ kind: 'medic', vx: 1.1, x: s.plane.x, y: s.plane.y, width: 28, height: 28, baseY: s.plane.y, age: 0 });
     step(s);
     expect(s.hp).toBe(s.maxHp);
   });
@@ -158,5 +160,243 @@ describe('seeker drones', () => {
     s.bullets.push({ x: seeker.x, y: seeker.y, width: 14, height: 4, vx: 0, vy: 0, damage: 1 });
     step(s);
     expect(s.enemyBullets.filter(b => b.kind === 'seeker')).toHaveLength(0);
+  });
+});
+
+describe('power-ups', () => {
+  const crate = (s: GameState, kind: 'rapid' | 'shield' | 'pierce' | 'wingman') =>
+    s.pickups.push({ kind, vx: -1.3, x: s.plane.x, y: s.plane.y, width: 28, height: 28, baseY: s.plane.y, age: 0 });
+
+  const killEnemy = (s: GameState, big = false) => {
+    s.enemies.push({
+      type: big ? EnemyType.BOMBER : EnemyType.STANDARD, kind: 'bullet', x: 600, y: 120,
+      width: 44, height: 22, vx: 0, vy: 0, hp: 0, maxHp: 1, damage: 1, age: 0, maxSpeed: 0, mode: 0,
+      timer: 0, baseY: 120, hitFlash: 0, lastFiredFrame: 0,
+    } as any);
+    step(s);
+  };
+
+  it('picking one up starts its timer and removes the crate', () => {
+    const s = createInitialState(1, loadout());
+    crate(s, 'rapid');
+    step(s);
+    expect(s.pickups).toHaveLength(0);
+    expect(s.powerUps.rapid).toBeGreaterThan(POWERUPS.rapid.duration - 3);
+  });
+
+  it('expires after its duration', () => {
+    const s = createInitialState(1, loadout());
+    s.powerUps.pierce = 5;
+    step(s, 5);
+    expect(s.powerUps.pierce).toBe(0);
+  });
+
+  it('rapid fire shoots faster', () => {
+    const volleys = (rapid: boolean) => {
+      const s = createInitialState(1, loadout());
+      if (rapid) s.powerUps.rapid = 9999;
+      s.enemies = [];
+      s.spawnTimer = 99999;
+      let n = 0;
+      let last = s.lastFiredFrame;
+      for (let i = 0; i < 120; i++) { step(s); if (s.lastFiredFrame !== last) { n++; last = s.lastFiredFrame; } }
+      return n;
+    };
+    expect(volleys(true)).toBeGreaterThan(volleys(false));
+  });
+
+  it('a shield absorbs one hit, pops, and keeps the combo', () => {
+    const s = createInitialState(1, loadout());
+    s.plane.invulnerable = 0;
+    s.combo = 7;
+    s.powerUps.shield = 500;
+    shootPlayer(s);
+    step(s);
+    expect(s.hp).toBe(s.maxHp);
+    expect(s.powerUps.shield).toBe(0);
+    expect(s.combo).toBeGreaterThanOrEqual(7);
+    expect(s.plane.invulnerable).toBeGreaterThan(0);
+  });
+
+  it('overdrive rounds pierce through several enemies', () => {
+    const s = createInitialState(1, loadout());
+    s.powerUps.pierce = 9999;
+    s.spawnTimer = 99999;
+    const mk = (x: number) => ({
+      type: EnemyType.ROAMER, kind: 'bullet', x, y: s.plane.y, width: 64, height: 34, vx: 0, vy: 0, hp: 50, maxHp: 50,
+      damage: 1, age: 0, maxSpeed: 0, mode: 0, timer: 0, baseY: s.plane.y, hitFlash: 0, lastFiredFrame: 0,
+    } as any);
+    s.enemies = [mk(140), mk(205)];
+    step(s, 40);
+    expect(s.enemies[0].hp).toBeLessThan(50);
+    expect(s.enemies[1].hp).toBeLessThan(50);
+    expect(s.bullets.some(b => b.hits)).toBe(true);
+  });
+
+  it('wingmen add extra shots per volley', () => {
+    const volley = (wing: boolean) => {
+      const s = createInitialState(1, loadout());
+      if (wing) s.powerUps.wingman = 9999;
+      s.spawnTimer = 99999;
+      s.lastFiredFrame = -999;
+      step(s);
+      return s.bullets.length;
+    };
+    expect(volley(true)).toBe(volley(false) + 2);
+  });
+
+  it('a long dry spell guarantees a drop, and only one floats at a time', () => {
+    const s = createInitialState(1, loadout());
+    s.spawnTimer = 99999;
+    s.dropPity = 1000;
+    killEnemy(s);
+    expect(s.pickups.filter(p => p.kind !== 'medic')).toHaveLength(1);
+    s.dropPity = 1000;
+    killEnemy(s);
+    expect(s.pickups.filter(p => p.kind !== 'medic')).toHaveLength(1);
+  });
+
+  it('dropped crates drift left and eventually leave the screen', () => {
+    const s = createInitialState(1, loadout());
+    s.spawnTimer = 99999;
+    s.dropPity = 1000;
+    killEnemy(s);
+    const p = s.pickups[0];
+    const x0 = p.x;
+    s.plane.y = 400; // out of the way
+    step(s, 20);
+    expect(p.x).toBeLessThan(x0);
+    step(s, 600);
+    expect(s.pickups).toHaveLength(0);
+  });
+});
+
+const plainEnemy = (x: number, y: number, hp = 1, type = EnemyType.STANDARD) => ({
+  type, kind: 'bullet', x, y, width: 44, height: 22, vx: 0, vy: 0, hp, maxHp: hp, damage: 1, age: 0, maxSpeed: 0,
+  mode: 0, timer: 0, baseY: y, hitFlash: 0, lastFiredFrame: 0,
+} as any);
+
+describe('bomb', () => {
+  const quiet = (s: GameState) => { s.spawnTimer = 99999; s.pickupTimer = 99999; s.enemies = []; };
+
+  it('starts partly charged and fills from kills', () => {
+    const s = createInitialState(1, loadout());
+    quiet(s);
+    const start = s.bomb;
+    expect(start).toBeGreaterThan(0);
+    expect(bombCharge(s)).toBeLessThan(1);
+    s.enemies.push(plainEnemy(600, 100, 0));
+    step(s);
+    expect(s.bomb).toBe(start + BOMB_PER_KILL);
+  });
+
+  it('does nothing until fully charged', () => {
+    const s = createInitialState(1, loadout());
+    quiet(s);
+    s.bomb = BOMB_MAX - 1;
+    s.enemies.push(plainEnemy(600, 100, 5));
+    s.bombRequested = true;
+    step(s);
+    expect(s.enemies).toHaveLength(1);
+    expect(s.bomb).toBe(BOMB_MAX - 1);
+    expect(s.bombRequested).toBe(false);
+  });
+
+  it('wipes enemy shots, destroys enemies, and resets the charge without recharging from its own kills', () => {
+    const s = createInitialState(1, loadout());
+    quiet(s);
+    s.bomb = BOMB_MAX;
+    s.enemies.push(plainEnemy(500, 80, 8), plainEnemy(620, 200, 8));
+    shootPlayer(s);
+    s.enemyBullets[0].x = 700;
+    s.bombRequested = true;
+    step(s);
+    expect(s.enemyBullets).toHaveLength(0);
+    expect(s.enemies).toHaveLength(0);
+    expect(s.kills).toBe(2);
+    expect(s.bomb).toBe(0);
+    expect(s.plane.invulnerable).toBeGreaterThan(30);
+    expect(s.flash).toBeGreaterThan(0);
+  });
+
+  it('takes a chunk out of a boss without killing it', () => {
+    const s = createInitialState(3, loadout());
+    s.spawnTimer = 99999;
+    s.bossState = 1;
+    s.bossTimer = 1;
+    step(s, 3);
+    expect(s.boss).not.toBeNull();
+    const full = s.boss!.hp;
+    s.boss!.entered = true;
+    s.bomb = BOMB_MAX;
+    s.bombRequested = true;
+    step(s);
+    expect(s.boss!.hp).toBeLessThan(full);
+    expect(s.boss!.hp).toBeGreaterThan(0);
+  });
+
+  it('trickles a charge while a boss is on screen', () => {
+    const s = createInitialState(3, loadout());
+    s.spawnTimer = 99999;
+    s.bossState = 1;
+    s.bossTimer = 1;
+    step(s, 3);
+    const before = s.bomb;
+    step(s, 60);
+    expect(s.bomb).toBeGreaterThan(before);
+  });
+});
+
+describe('combo perks', () => {
+  const quiet = (s: GameState) => { s.spawnTimer = 99999; s.pickupTimer = 99999; s.enemies = []; };
+
+  it('a hot streak fires faster', () => {
+    const fired = (combo: number) => {
+      const s = createInitialState(1, loadout());
+      quiet(s);
+      s.combo = combo;
+      s.comboTimer = 99999;
+      let n = 0;
+      let last = s.lastFiredFrame;
+      for (let i = 0; i < 200; i++) { step(s); if (s.lastFiredFrame !== last) { n++; last = s.lastFiredFrame; } }
+      return n;
+    };
+    expect(fired(ON_FIRE_COMBO)).toBeGreaterThan(fired(0));
+  });
+
+  it('reaching the on-fire streak celebrates', () => {
+    const s = createInitialState(1, loadout());
+    quiet(s);
+    s.combo = ON_FIRE_COMBO - 1;
+    s.comboTimer = 100;
+    s.enemies.push(plainEnemy(600, 100, 0));
+    step(s);
+    expect(s.popups.some(p => p.text === 'ON FIRE!')).toBe(true);
+  });
+
+  it('every salvo milestone launches free homing missiles', () => {
+    const s = createInitialState(1, loadout());
+    quiet(s);
+    s.combo = SALVO_EVERY - 1;
+    s.comboTimer = 100;
+    s.enemies.push(plainEnemy(600, 100, 0));
+    step(s);
+    expect(s.missiles.length).toBe(4);
+    expect(s.missiles.every(m => m.type === 'homing')).toBe(true);
+  });
+
+  it('losing a big streak to the timer says so; a small one does not', () => {
+    const lose = (combo: number) => {
+      const s = createInitialState(1, loadout());
+      quiet(s);
+      s.combo = combo;
+      s.comboTimer = 1;
+      step(s);
+      return { s, lost: s.popups.some(p => p.text === 'COMBO LOST') };
+    };
+    const big = lose(ON_FIRE_COMBO);
+    expect(big.lost).toBe(true);
+    expect(big.s.combo).toBe(0);
+    expect(lose(3).lost).toBe(false);
   });
 });

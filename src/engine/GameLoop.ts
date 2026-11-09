@@ -8,6 +8,14 @@ import { medicHeal } from './Armor';
 import { PROJECTILES, type ProjectileKind } from './Projectiles';
 import { getLevelConfig, newEnemiesAt, type LevelConfig } from './Levels';
 import { cannonStats, missileStats, type MissileType } from './Weapons';
+import {
+  POWERUPS, POWERUP_KINDS, noPowerUps, RAPID_FIRE_FACTOR, PIERCE_DAMAGE, SHIELD_BREAK_INVULNERABLE_FRAMES, WINGMAN_OFFSET,
+  DROP_CHANCE_SMALL, DROP_CHANCE_BIG, DROP_PITY_KILLS, type ActivePowerUps, type PowerUpKind,
+} from './PowerUps';
+import {
+  BOMB_MAX, BOMB_START, BOMB_PER_KILL, BOMB_PER_BIG_KILL, BOMB_BOSS_TRICKLE, BOMB_LOCK_FRAMES,
+  BOMB_INVULNERABLE_FRAMES, BOMB_BOSS_DAMAGE, BOMB_BULLET_SCORE,
+} from './Bomb';
 import { BOSS_DEFS, ENEMY_DEFS, ENEMY_NAMES, EnemyType, bossKindFor, bossTier, bossTitle } from './Enemies';
 
 export { EnemyType };
@@ -79,6 +87,7 @@ export interface Bullet extends Box {
   vx: number;
   vy: number;
   damage: number;
+  hits?: object[]; // overdrive rounds pierce, remembering what they've already damaged
 }
 
 export interface EnemyBullet extends Box {
@@ -90,8 +99,10 @@ export interface EnemyBullet extends Box {
   maxSpeed: number; // rockets accelerate toward it, seekers cruise at it
 }
 
-// Floating medic kit that drifts across the screen
+// Floating crate that drifts across the screen: a medic kit, or a power-up dropped by a destroyed enemy
 export interface Pickup extends Box {
+  kind: 'medic' | PowerUpKind;
+  vx: number;
   baseY: number;
   age: number;
 }
@@ -127,6 +138,12 @@ export interface Popup {
 
 // Kills within this many frames of each other keep the combo alive
 export const COMBO_WINDOW = 150;
+// Combo perks: a hot streak fires faster, every few kills a free missile salvo launches, and
+// losing a big streak stings
+export const ON_FIRE_COMBO = 10;
+export const SALVO_EVERY = 25;
+const ON_FIRE_FIRE_FACTOR = 0.8;
+export const isOnFire = (combo: number) => combo >= ON_FIRE_COMBO;
 const MAX_POPUPS = 8;
 export const comboMultiplier = (combo: number) => Math.min(4, 1 + Math.floor(combo / 5));
 
@@ -148,10 +165,15 @@ export interface GameState {
   lastFiredFrame: number;
   lastMissileFrame: number;
   missileRequested: boolean;
+  bomb: number;           // 0..BOMB_MAX charge
+  bombRequested: boolean;
+  bombLock: number;       // frames during which kills don't recharge the bomb
   spawnTimer: number;
   bossState: 0 | 1 | 2; // 0 = not yet, 1 = warning, 2 = boss fight
   bossTimer: number;
   pickupTimer: number;
+  powerUps: ActivePowerUps; // frames remaining per boost
+  dropPity: number;         // kills since the last power-up drop
   banner: { title: string; sub: string } | null;
   bannerTimer: number;
   score: number;
@@ -204,10 +226,15 @@ export const createInitialState = (level: number, loadout: Loadout): GameState =
     lastFiredFrame: 0,
     lastMissileFrame: -9999,
     missileRequested: false,
+    bomb: BOMB_START,
+    bombRequested: false,
+    bombLock: 0,
     spawnTimer: 100,
     bossState: 0,
     bossTimer: 0,
     pickupTimer: nextPickupDelay(),
+    powerUps: noPowerUps(),
+    dropPity: 0,
     banner: {
       title: `LEVEL ${level}`,
       sub: config.isBoss
@@ -234,6 +261,9 @@ export const createInitialState = (level: number, loadout: Loadout): GameState =
     endTimer: 0,
   };
 };
+
+// 0..1, how charged the bomb is
+export const bombCharge = (state: GameState) => Math.min(1, state.bomb / BOMB_MAX);
 
 // 0..1, how recharged the equipped missile is
 export const missileCharge = (state: GameState) => {
@@ -365,6 +395,20 @@ const setBanner = (s: GameState, title: string, sub: string, frames: number) => 
 // Applies damage; at zero hull the plane is lost and the run ends (the UI may offer a continue)
 const hurtPlayer = (s: GameState, amount: number, onSound: SoundFn) => {
   const { plane } = s;
+  const cx0 = plane.x + plane.width / 2;
+  const cy0 = plane.y + plane.height / 2;
+
+  // A shield eats the whole hit and pops; the combo survives
+  if (s.powerUps.shield > 0) {
+    s.powerUps.shield = 0;
+    plane.invulnerable = SHIELD_BREAK_INVULNERABLE_FRAMES;
+    emit(s, 'ring', cx0, cy0, 0, 0, 22, 60);
+    emit(s, 'flash', cx0, cy0, 0, 0, 8, 40);
+    s.shake = Math.max(s.shake, 5);
+    onSound('hit');
+    return;
+  }
+
   s.hp = Math.max(0, s.hp - amount);
   s.hurt = 18;
   s.combo = 0;
@@ -858,15 +902,33 @@ const updateBoss = (s: GameState, onSound: SoundFn) => {
   }
 };
 
+// Positions of the two wingman drones, bobbing gently above and below the jet
+export const wingmanDrones = (plane: Plane, frameCount: number): Position[] => {
+  const bob = Math.sin(frameCount * 0.09) * 3;
+  const x = plane.x + 12;
+  const cy = plane.y + plane.height / 2;
+  return [{ x, y: cy - WINGMAN_OFFSET + bob }, { x, y: cy + WINGMAN_OFFSET - bob }];
+};
+
 const fireCannon = (s: GameState, onSound: SoundFn) => {
-  const { plane, loadout } = s;
-  const { fireRate, shots } = cannonStats(loadout.cannon);
+  const { plane, loadout, powerUps } = s;
+  const stats = cannonStats(loadout.cannon);
+  const fireRate = Math.max(
+    6,
+    Math.round(stats.fireRate * (powerUps.rapid > 0 ? RAPID_FIRE_FACTOR : 1) * (isOnFire(s.combo) ? ON_FIRE_FIRE_FACTOR : 1)),
+  );
+  const { shots } = stats;
   if (s.frameCount - s.lastFiredFrame < fireRate) return;
 
+  const pierce = powerUps.pierce > 0;
   const x = plane.x + plane.width;
   const cy = plane.y + plane.height / 2 - BULLET_SIZE.height / 2;
-  const shoot = (dy: number, vy: number) =>
-    s.bullets.push({ x, y: cy + dy, width: BULLET_SIZE.width, height: BULLET_SIZE.height, vx: BULLET_SPEED, vy, damage: 1 });
+  const shootAt = (bx: number, by: number, vy: number) =>
+    s.bullets.push({
+      x: bx, y: by, width: BULLET_SIZE.width, height: BULLET_SIZE.height, vx: BULLET_SPEED, vy,
+      damage: pierce ? PIERCE_DAMAGE : 1, ...(pierce ? { hits: [] } : null),
+    });
+  const shoot = (dy: number, vy: number) => shootAt(x, cy + dy, vy);
 
   if (shots === 1) {
     shoot(0, 0);
@@ -878,9 +940,54 @@ const fireCannon = (s: GameState, onSound: SoundFn) => {
     shoot(-3, -2.4);
     shoot(3, 2.4);
   }
+  if (powerUps.wingman > 0) {
+    wingmanDrones(plane, s.frameCount).forEach(d => shootAt(d.x + 18, d.y + 5 - BULLET_SIZE.height / 2, 0));
+  }
   s.lastFiredFrame = s.frameCount;
   plane.muzzle = 3;
   onSound('shoot');
+};
+
+// Launches a free fan of homing missiles (a combo milestone reward)
+const fireSalvo = (s: GameState) => {
+  const { plane, loadout } = s;
+  const stats = missileStats('homing', loadout.missileLevel);
+  const cy = plane.y + plane.height / 2 - stats.size.height / 2;
+  [-4, -1.4, 1.4, 4].forEach(vy => {
+    s.missiles.push({
+      type: 'homing', x: plane.x + plane.width - 6, y: cy, width: stats.size.width, height: stats.size.height,
+      vx: stats.speed * 0.6, vy, damage: stats.damage, radius: 0, speed: stats.speed, hits: [],
+    });
+  });
+  addPopup(s, plane.x + plane.width / 2, plane.y - 26, 'SALVO!', '#ff6a55', true);
+};
+
+// The bomb: wipes every enemy shot, destroys regular enemies outright and takes a bite out of a boss
+const detonateBomb = (s: GameState, onSound: SoundFn) => {
+  const { plane } = s;
+  const cx = plane.x + plane.width / 2;
+  const cy = plane.y + plane.height / 2;
+  s.bomb = 0;
+  s.bombLock = BOMB_LOCK_FRAMES;
+  plane.invulnerable = Math.max(plane.invulnerable, BOMB_INVULNERABLE_FRAMES);
+
+  const cleared = s.enemyBullets.length;
+  s.enemyBullets.forEach(b => spawnExplosion(s, b.x + b.width / 2, b.y + b.height / 2, 0.35));
+  s.enemyBullets = [];
+  s.score += cleared * BOMB_BULLET_SCORE;
+
+  s.enemies.forEach(e => { if (e.hp > 0) damageTarget(e, 999); });
+  if (s.boss && s.boss.dying === 0 && s.boss.hp > 0) damageTarget(s.boss, s.boss.maxHp * BOMB_BOSS_DAMAGE);
+
+  emit(s, 'flash', cx, cy, 0, 0, 14, 260);
+  emit(s, 'ring', cx, cy, 0, 0, 26, 800);
+  emit(s, 'ring', cx, cy, 0, 0, 34, 1000);
+  emit(s, 'ring', cx, cy, 0, 0, 42, 1200);
+  s.flash = 0.9;
+  s.shake = Math.max(s.shake, 18);
+  addPopup(s, cx, cy - 40, cleared > 0 ? `BOMB!  ${cleared} SHOTS CLEARED` : 'BOMB!', '#ffb23e', true);
+  onSound('destroy');
+  onSound('warning');
 };
 
 const fireMissile = (s: GameState, onSound: SoundFn) => {
@@ -959,7 +1066,7 @@ const shootDownSeekers = (s: GameState, onSound: SoundFn) => {
     onSound('hit');
     s.score += 5;
     s.enemyBullets.splice(k, 1);
-    s.bullets.splice(j, 1);
+    if (!b.hits) s.bullets.splice(j, 1);
   }
 };
 
@@ -967,6 +1074,16 @@ const resolveShots = (s: GameState, onSound: SoundFn) => {
   shootDownSeekers(s, onSound);
   for (let j = s.bullets.length - 1; j >= 0; j--) {
     const b = s.bullets[j];
+    if (b.hits) {
+      forEachTarget(s, t => {
+        if (b.hits!.includes(t) || !isRectCollision(t, b)) return;
+        b.hits!.push(t);
+        damageTarget(t, b.damage);
+        spawnHitSparks(s, b.x + b.width, b.y);
+        if (t.hp > 0) onSound('hit');
+      });
+      continue;
+    }
     const t = firstHit(s, b);
     if (!t) continue;
     damageTarget(t, b.damage);
@@ -1004,6 +1121,24 @@ const resolveShots = (s: GameState, onSound: SoundFn) => {
   }
 };
 
+// Destroyed enemies sometimes leave a power-up crate behind. Only one floats at a time, and a dry
+// spell guarantees the next kill pays out.
+const maybeDropPowerUp = (s: GameState, from: Box, big: boolean) => {
+  s.dropPity += 1;
+  if (s.pickups.some(p => p.kind !== 'medic')) return;
+  if (s.dropPity < DROP_PITY_KILLS && Math.random() >= (big ? DROP_CHANCE_BIG : DROP_CHANCE_SMALL)) return;
+  s.dropPity = 0;
+
+  // Prefer a boost that isn't already running at full strength
+  const fresh = POWERUP_KINDS.filter(k => s.powerUps[k] < POWERUPS[k].duration * 0.5);
+  const pool = fresh.length ? fresh : POWERUP_KINDS;
+  const kind = pool[Math.floor(Math.random() * pool.length)];
+  const y = clamp(from.y + from.height / 2 - PICKUP_SIZE.height / 2, 60, GROUND_Y - PICKUP_SIZE.height - 24);
+  s.pickups.push({
+    kind, vx: -1.3, x: from.x + from.width / 2 - PICKUP_SIZE.width / 2, y, baseY: y, age: 0, ...PICKUP_SIZE,
+  });
+};
+
 const reapEnemies = (s: GameState, onSound: SoundFn) => {
   for (let i = s.enemies.length - 1; i >= 0; i--) {
     const e = s.enemies[i];
@@ -1015,11 +1150,21 @@ const reapEnemies = (s: GameState, onSound: SoundFn) => {
     s.combo += 1;
     s.comboTimer = COMBO_WINDOW;
     s.bestCombo = Math.max(s.bestCombo, s.combo);
+    if (s.bombLock === 0) s.bomb = Math.min(BOMB_MAX, s.bomb + (def.boom > 1.2 ? BOMB_PER_BIG_KILL : BOMB_PER_KILL));
+    if (s.combo === ON_FIRE_COMBO && s.plane.alive) {
+      const px = s.plane.x + s.plane.width / 2;
+      const py = s.plane.y + s.plane.height / 2;
+      addPopup(s, px, s.plane.y - 26, 'ON FIRE!', '#ff8a2a', true);
+      emit(s, 'ring', px, py, 0, 0, 22, 80);
+      emit(s, 'flash', px, py, 0, 0, 8, 50);
+    }
+    if (s.combo % SALVO_EVERY === 0 && s.plane.alive) fireSalvo(s);
     const mult = comboMultiplier(s.combo);
     const points = def.score * mult;
     s.score += points;
     s.kills += 1;
     addPopup(s, e.x + e.width / 2, e.y, mult > 1 ? `+${points} x${mult}` : `+${points}`, mult > 1 ? '#ffb23e' : '#ffffff');
+    maybeDropPowerUp(s, e, def.boom > 1.2);
     s.enemies.splice(i, 1);
   }
 
@@ -1072,14 +1217,14 @@ const updatePickups = (s: GameState, onSound: SoundFn) => {
   if (s.pickupTimer <= 0) {
     if (s.hp < s.maxHp && s.pickups.length === 0 && Math.random() < PICKUP_DROP_CHANCE) {
       const y = rand(70, GROUND_Y - PICKUP_SIZE.height - 24);
-      s.pickups.push({ x: -PICKUP_SIZE.width, y, baseY: y, age: 0, ...PICKUP_SIZE });
+      s.pickups.push({ kind: 'medic', vx: 1.1, x: -PICKUP_SIZE.width, y, baseY: y, age: 0, ...PICKUP_SIZE });
     }
     s.pickupTimer = nextPickupDelay();
   }
 
   s.pickups.forEach(p => {
     p.age += 1;
-    p.x += 1.1;
+    p.x += p.vx;
     p.y = clamp(p.baseY + Math.sin(p.age * 0.05) * 16, 50, GROUND_Y - p.height - 6);
   });
 
@@ -1087,8 +1232,14 @@ const updatePickups = (s: GameState, onSound: SoundFn) => {
     for (let i = s.pickups.length - 1; i >= 0; i--) {
       const p = s.pickups[i];
       if (!isRectCollision(plane, p)) continue;
-      s.hp = Math.min(s.maxHp, s.hp + medicHeal(s.maxHp));
-      s.heal = 40;
+      if (p.kind === 'medic') {
+        s.hp = Math.min(s.maxHp, s.hp + medicHeal(s.maxHp));
+        s.heal = 40;
+      } else {
+        const def = POWERUPS[p.kind];
+        s.powerUps[p.kind] = def.duration;
+        addPopup(s, p.x + p.width / 2, p.y - 6, def.name, def.color);
+      }
       onSound('pickup');
       emit(s, 'flash', p.x + p.width / 2, p.y + p.height / 2, 0, 0, 10, 34);
       emit(s, 'ring', plane.x + plane.width / 2, plane.y + plane.height / 2, 0, 0, 20, 50);
@@ -1096,7 +1247,7 @@ const updatePickups = (s: GameState, onSound: SoundFn) => {
     }
   }
 
-  s.pickups = s.pickups.filter(p => p.x < SCREEN_WIDTH + 10);
+  s.pickups = s.pickups.filter(p => (p.vx > 0 ? p.x < SCREEN_WIDTH + 10 : p.x + p.width > -10));
 };
 
 export const updateGameState = (s: GameState, onSound: SoundFn) => {
@@ -1109,12 +1260,22 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
   }
 
   s.frameCount += 1;
-  if (s.comboTimer > 0 && --s.comboTimer === 0) s.combo = 0;
+  if (s.comboTimer > 0 && --s.comboTimer === 0) {
+    if (isOnFire(s.combo) && s.plane.alive) {
+      addPopup(s, s.plane.x + s.plane.width / 2, s.plane.y - 20, 'COMBO LOST', '#9aa6b1');
+    }
+    s.combo = 0;
+  }
+  if (s.bombLock > 0) s.bombLock -= 1;
+  if (s.bossState === 2 && s.boss && s.boss.dying === 0 && s.bombLock === 0) {
+    s.bomb = Math.min(BOMB_MAX, s.bomb + BOMB_BOSS_TRICKLE);
+  }
   if (s.bannerTimer > 0) s.bannerTimer -= 1;
 
   const { plane, config } = s;
 
   if (plane.invulnerable > 0) plane.invulnerable -= 1;
+  POWERUP_KINDS.forEach(k => { if (s.powerUps[k] > 0) s.powerUps[k] -= 1; });
 
   if (plane.alive) {
     plane.x += plane.vx;
@@ -1138,8 +1299,13 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
 
     fireCannon(s, onSound);
     fireMissile(s, onSound);
+    if (s.bombRequested) {
+      s.bombRequested = false;
+      if (s.bomb >= BOMB_MAX) detonateBomb(s, onSound);
+    }
   } else {
     s.missileRequested = false;
+    s.bombRequested = false;
   }
 
   // Move projectiles

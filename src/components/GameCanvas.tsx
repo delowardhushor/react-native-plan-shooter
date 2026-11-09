@@ -5,10 +5,11 @@ import {
   PLAYER_SPEED, MAX_CONTINUES, COLOR_TEXT, COLOR_PANEL, COLOR_PANEL_BORDER, COLOR_ACCENT
 } from '../engine/Constants';
 import {
-  COMBO_WINDOW, comboMultiplier, createInitialState, updateGameState, revivePlayer, missileCharge,
+  COMBO_WINDOW, bombCharge, comboMultiplier, isOnFire, createInitialState, updateGameState, revivePlayer, missileCharge,
   type GameState, type Loadout,
 } from '../engine/GameLoop';
 import { MISSILES } from '../engine/Weapons';
+import { POWERUPS, POWERUP_KINDS } from '../engine/PowerUps';
 import { renderFrame } from '../render/Renderer';
 import { computeRunReward, computeStars, REPLAY_REWARD_FACTOR, STAR_BONUS } from '../state/Progress';
 import { showRewardedAd } from '../services/Ads';
@@ -160,6 +161,11 @@ export const GameCanvas = (props: Props) => {
     gameState.current.plane.vy = dy * PLAYER_SPEED;
   };
 
+  const handleBomb = () => {
+    if (gameState.current.status !== 'playing' || isPaused.current) return;
+    gameState.current.bombRequested = true;
+  };
+
   const handleMissileFire = () => {
     if (gameState.current.status !== 'playing' || isPaused.current) return;
     gameState.current.missileRequested = true;
@@ -309,9 +315,27 @@ export const GameCanvas = (props: Props) => {
           <Text style={[styles.comboText, comboMult > 1 && styles.comboHot]}>
             {s.combo} COMBO{comboMult > 1 ? `  x${comboMult}` : ''}
           </Text>
+          {isOnFire(s.combo) && <Text style={styles.onFire}>ON FIRE  ·  FASTER GUNS</Text>}
           <View style={styles.comboTrack}>
             <View style={[styles.comboFill, { width: `${(s.comboTimer / COMBO_WINDOW) * 100}%` }]} />
           </View>
+        </View>
+      )}
+
+      {s.status === 'playing' && (
+        <View style={styles.powerRow} pointerEvents="none">
+          {POWERUP_KINDS.filter(k => s.powerUps[k] > 0).map(k => {
+            const def = POWERUPS[k];
+            const left = s.powerUps[k];
+            return (
+              <View key={k} style={[styles.powerChip, { borderColor: def.color }, left < 90 && Math.floor(left / 6) % 2 === 0 && styles.powerChipBlink]}>
+                <Text style={[styles.powerText, { color: def.color }]}>{def.short}</Text>
+                <View style={styles.powerTrack}>
+                  <View style={[styles.powerFill, { backgroundColor: def.color, width: `${Math.min(1, left / def.duration) * 100}%` }]} />
+                </View>
+              </View>
+            );
+          })}
         </View>
       )}
 
@@ -329,6 +353,8 @@ export const GameCanvas = (props: Props) => {
           onDirectionChange={handleDirectionChange}
           onMissileFire={handleMissileFire}
           missileCharge={missileCharge(s)}
+          onBomb={handleBomb}
+          bombCharge={bombCharge(s)}
           missileLabel={missileInfo.name}
           missileColor={missileInfo.color}
         />
@@ -426,6 +452,15 @@ const styles = StyleSheet.create({
     textShadowRadius: 3,
   },
   popupBig: { fontSize: 28 },
+  powerRow: { position: 'absolute', top: 84, left: 12, zIndex: 15 },
+  powerChip: {
+    width: 74, paddingHorizontal: 8, paddingVertical: 4, marginBottom: 5, borderRadius: 8, borderWidth: 1.5,
+    backgroundColor: COLOR_PANEL,
+  },
+  powerChipBlink: { opacity: 0.45 },
+  powerText: { fontSize: 10, fontWeight: '900', letterSpacing: 2 },
+  powerTrack: { height: 3, borderRadius: 2, marginTop: 3, backgroundColor: 'rgba(255,255,255,0.2)', overflow: 'hidden' },
+  powerFill: { height: '100%' },
   comboWrap: { position: 'absolute', top: 84, alignSelf: 'center', alignItems: 'center', zIndex: 15 },
   comboText: {
     color: '#ffffff',
@@ -436,6 +471,7 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
+  onFire: { color: '#ff8a2a', fontSize: 10, fontWeight: '900', letterSpacing: 2, marginTop: 1 },
   comboHot: { color: COLOR_ACCENT, fontSize: 22 },
   comboTrack: { width: 110, height: 4, borderRadius: 2, marginTop: 4, backgroundColor: 'rgba(255,255,255,0.25)', overflow: 'hidden' },
   comboFill: { height: '100%', backgroundColor: COLOR_ACCENT },
