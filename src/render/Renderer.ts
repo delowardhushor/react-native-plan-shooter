@@ -4,7 +4,7 @@ import { EnemyType } from '../engine/Enemies';
 import { isOnFire, wingmanDrones } from '../engine/GameLoop';
 import type { Boss, Enemy, EnemyBullet, GameState, Particle, Pickup } from '../engine/GameLoop';
 import { GROUND_Y, drawBackdrop, drawVignette } from './Backdrop';
-import { createPictureUnbounded, fillPaint, strokePaint } from './gfx';
+import { createPictureUnbounded, fillPaint, radial, shaderPaint, strokePaint } from './gfx';
 import {
   BOSS_FRAMES, BOSS_GLOWS, ENEMY_FRAMES, ENEMY_GLOWS, HERO_TIERS, JET_FRAME, MEDIC_FRAME, DRONE_FRAME, ROCKET_FRAME, SEEKER_FRAME,
   getHero, getSprites, type Sprites,
@@ -18,6 +18,12 @@ const ringPaint = strokePaint('#fff1c4', 2);
 const lockPaint = strokePaint('#ff3b2a', 1.5);
 const hurtPaint = fillPaint('#ff2a2a');
 const flashPaint = fillPaint('#ffffff');
+// Red edge glow that throbs when the hull is nearly gone
+const lowHpPaint = shaderPaint(radial(
+  SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, Math.hypot(SCREEN_WIDTH, SCREEN_HEIGHT) / 2,
+  ['rgba(255,30,30,0)', 'rgba(255,30,30,0)', 'rgba(255,30,30,0.6)'], [0, 0.5, 1],
+));
+export const LOW_HP_RATIO = 0.25;
 const sparkPaint = strokePaint('#ffd98a', 1.5);
 sparkPaint.setStrokeCap(StrokeCap.Round);
 sparkPaint.setBlendMode(BlendMode.Plus);
@@ -177,9 +183,16 @@ const drawEnemy = (c: SkCanvas, S: Sprites, e: Enemy, frameCount: number) => {
 
 const drawBoss = (c: SkCanvas, S: Sprites, b: Boss, frameCount: number) => {
   drawShadow(c, b.x, b.y, b.width, b.height);
+  if (b.stage > 0 && b.dying === 0) {
+    // A burning aura marks a boss that has gone into a rage phase; it flares during the power-up
+    const pulse = 0.5 + 0.5 * Math.sin(frameCount * 0.25);
+    const surge = b.transition > 0 ? 1 + b.transition / 40 : 1;
+    blit(c, S.fireGlow, b.x + b.width / 2, b.y + b.height / 2, b.width * 1.5 * surge, additivePaint, (b.stage === 2 ? 0.5 : 0.32) + 0.15 * pulse);
+  }
   drawAircraft(c, {
     pic: S.bosses[b.kind], frame: BOSS_FRAMES[b.kind], x: b.x, y: b.y, w: b.width, h: b.height,
-    flip: true, tilt: b.dying > 0 ? 6 : b.vy * 1.5, hit: b.hitFlash > 0,
+    flip: true, tilt: b.dying > 0 ? 6 : b.vy * 1.5,
+    hit: b.hitFlash > 0 || (b.transition > 0 && Math.floor(frameCount / 3) % 2 === 0),
     glows: BOSS_GLOWS[b.kind], frameCount, S,
     tint: b.tier > 0 ? MK_TINTS[Math.min(b.tier, MK_TINTS.length) - 1] : undefined,
   });
@@ -235,6 +248,15 @@ export const renderFrame = (state: GameState): SkPicture =>
     c.save();
     if (state.shake > 0) {
       c.translate((Math.random() - 0.5) * state.shake * 2, (Math.random() - 0.5) * state.shake * 2);
+    }
+    // Slow push-in on the boss as it breaks apart
+    if (state.boss && state.boss.dying > 40) {
+      const z = 1 + 0.09 * Math.min(1, (state.boss.dying - 40) / 55);
+      const bx = state.boss.x + state.boss.width / 2;
+      const by = state.boss.y + state.boss.height / 2;
+      c.translate(bx, by);
+      c.scale(z, z);
+      c.translate(-bx, -by);
     }
 
     drawBackdrop(c, f, state.level);
@@ -320,6 +342,10 @@ export const renderFrame = (state: GameState): SkPicture =>
 
     c.restore();
     drawVignette(c, state.level);
+    if (state.status === 'playing' && state.hp > 0 && state.hp / state.maxHp <= LOW_HP_RATIO) {
+      lowHpPaint.setAlphaf(0.55 + 0.45 * Math.sin(f * 0.14));
+      c.drawRect({ x: 0, y: 0, width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, lowHpPaint);
+    }
     if (state.hurt > 0) {
       hurtPaint.setAlphaf((state.hurt / 18) * 0.3);
       c.drawRect({ x: 0, y: 0, width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, hurtPaint);

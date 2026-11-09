@@ -400,3 +400,87 @@ describe('combo perks', () => {
     expect(lose(3).lost).toBe(false);
   });
 });
+
+describe('boss rage phases and hit-stop', () => {
+  const bossFight = () => {
+    const s = createInitialState(3, loadout(3));
+    s.spawnTimer = 99999;
+    s.pickupTimer = 99999;
+    s.bossState = 1;
+    s.bossTimer = 1;
+    step(s, 3);
+    s.boss!.entered = true;
+    s.boss!.x = s.boss!.targetX;
+    s.plane.invulnerable = 99999;
+    return s;
+  };
+
+  it('goes into a rage cutscene at half hull: bullets cleared, invulnerable, banner', () => {
+    const s = bossFight();
+    shootPlayer(s);
+    s.boss!.hp = s.boss!.maxHp * 0.45;
+    step(s);
+    expect(s.boss!.stage).toBe(1);
+    expect(s.boss!.transition).toBeGreaterThan(0);
+    expect(s.banner?.title).toBe('ENRAGED!');
+    expect(s.enemyBullets).toHaveLength(0);
+  });
+
+  it('cannot be damaged, and does not fire, during the cutscene', () => {
+    const s = bossFight();
+    s.boss!.hp = s.boss!.maxHp * 0.45;
+    step(s);
+    const hp = s.boss!.hp;
+    s.bomb = 100;
+    s.bombRequested = true;
+    s.missiles.push({ type: 'homing', x: s.boss!.x + 10, y: s.boss!.y + 10, width: 28, height: 8, vx: 0, vy: 0, damage: 4, radius: 0, speed: 11, hits: [] });
+    step(s, 20);
+    expect(s.boss!.hp).toBe(hp);
+    expect(s.enemyBullets).toHaveLength(0);
+    step(s, 80);
+    expect(s.boss!.transition).toBe(0);
+    s.boss!.hp = hp;
+    s.missiles.push({ type: 'homing', x: s.boss!.x + 10, y: s.boss!.y + 10, width: 28, height: 8, vx: 0, vy: 0, damage: 4, radius: 0, speed: 11, hits: [] });
+    step(s);
+    expect(s.boss!.hp).toBeLessThan(hp);
+  });
+
+  it('has a second rage at the last fifth, and each rage only happens once', () => {
+    const s = bossFight();
+    s.boss!.hp = s.boss!.maxHp * 0.45;
+    step(s, 90);
+    expect(s.boss!.stage).toBe(1);
+    step(s, 60);
+    expect(s.boss!.stage).toBe(1);
+    s.boss!.hp = s.boss!.maxHp * 0.15;
+    step(s);
+    expect(s.boss!.stage).toBe(2);
+    expect(s.banner?.title).toBe('FINAL STAND');
+    step(s, 90);
+    step(s, 60);
+    expect(s.boss!.stage).toBe(2);
+  });
+
+  it('big kills freeze the game briefly for impact', () => {
+    const s = createInitialState(7, loadout());
+    s.spawnTimer = 99999;
+    s.pickupTimer = 99999;
+    s.enemies = [plainEnemy(600, 100, 0, EnemyType.BOMBER)];
+    step(s);
+    expect(s.hitStop).toBeGreaterThan(0);
+    const frame = s.frameCount;
+    step(s, 2);
+    expect(s.frameCount).toBe(frame);
+    step(s, 5);
+    expect(s.frameCount).toBeGreaterThan(frame);
+  });
+
+  it('taking a hit freezes the game for a moment too', () => {
+    const s = createInitialState(1, loadout());
+    s.spawnTimer = 99999;
+    s.plane.invulnerable = 0;
+    shootPlayer(s);
+    step(s);
+    expect(s.hitStop).toBeGreaterThan(0);
+  });
+});

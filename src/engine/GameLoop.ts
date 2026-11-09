@@ -63,6 +63,8 @@ export interface Boss extends Box {
   targetX: number;
   entered: boolean;
   phase: 1 | 2;
+  stage: 0 | 1 | 2;   // 0 = fresh, 1 = enraged (half hull), 2 = final stand (last fifth)
+  transition: number; // frames left of a rage cutscene: the boss is invulnerable and silent
   lastFiredFrame: number;
   volley: number;
   burst: number;    // shots left in the current rapid-fire burst
@@ -187,6 +189,7 @@ export interface GameState {
   combo: number; // consecutive kills without taking a hit or letting the timer run out
   comboTimer: number;
   bestCombo: number;
+  hitStop: number;   // frames the whole simulation freezes for impact
   timeScale: number; // < 1 slows the simulation (boss defeat slow-motion)
   flash: number; // white screen flash, 1 -> 0
   status: GameStatus;
@@ -255,6 +258,7 @@ export const createInitialState = (level: number, loadout: Loadout): GameState =
     combo: 0,
     comboTimer: 0,
     bestCombo: 0,
+    hitStop: 0,
     timeScale: 1,
     flash: 0,
     status: 'playing',
@@ -361,6 +365,9 @@ const playerHitbox = (plane: Plane): Box => ({
 
 type Target = Enemy | Boss;
 
+// A boss shrugs off everything while it is dying or powering up for a rage phase
+const bossVulnerable = (b: Boss) => b.dying === 0 && b.hp > 0 && b.transition === 0;
+
 // Mines are slow plasma orbs dropped by the minelayer; boss orbs are much faster
 const MINE_MAX_SPEED = 1.2;
 const MINE_LIFETIME = 600;
@@ -376,14 +383,14 @@ const damageTarget = (t: Target, amount: number) => {
 // Everything a shot can hit this frame
 const forEachTarget = (s: GameState, cb: (t: Target) => void) => {
   s.enemies.forEach(e => { if (e.hp > 0) cb(e); });
-  if (s.boss && s.boss.dying === 0 && s.boss.hp > 0) cb(s.boss);
+  if (s.boss && bossVulnerable(s.boss)) cb(s.boss);
 };
 
 const firstHit = (s: GameState, box: Box): Target | null => {
   for (const e of s.enemies) {
     if (e.hp > 0 && isRectCollision(e, box)) return e;
   }
-  if (s.boss && s.boss.dying === 0 && s.boss.hp > 0 && isRectCollision(s.boss, box)) return s.boss;
+  if (s.boss && bossVulnerable(s.boss) && isRectCollision(s.boss, box)) return s.boss;
   return null;
 };
 
@@ -419,6 +426,7 @@ const hurtPlayer = (s: GameState, amount: number, onSound: SoundFn) => {
     plane.invulnerable = HIT_INVULNERABLE_FRAMES;
     spawnExplosion(s, cx, cy, 0.5);
     s.shake = Math.max(s.shake, 9);
+    s.hitStop = Math.max(s.hitStop, 4);
     onSound('hurt');
     return;
   }
@@ -427,6 +435,7 @@ const hurtPlayer = (s: GameState, amount: number, onSound: SoundFn) => {
   onSound('hurt');
   onSound('destroy');
   s.shake = 14;
+  s.hitStop = Math.max(s.hitStop, 8);
   plane.alive = false;
   plane.vx = 0;
   plane.vy = 0;
@@ -531,6 +540,8 @@ const spawnEnemy = (s: GameState) => {
   s.enemies.push(makeEnemy(s, type, SCREEN_WIDTH, y));
 };
 
+const BOSS_RAGE_FRAMES = 75;
+
 const spawnBoss = (s: GameState) => {
   const kind = bossKindFor(s.config.bossIndex);
   const def = BOSS_DEFS[kind];
@@ -548,6 +559,8 @@ const spawnBoss = (s: GameState) => {
     targetX: SCREEN_WIDTH - def.size.width - 24,
     entered: false,
     phase: 1,
+    stage: 0,
+    transition: 0,
     lastFiredFrame: s.frameCount,
     volley: 0,
     burst: 0,
@@ -810,6 +823,32 @@ const updateBoss = (s: GameState, onSound: SoundFn) => {
     return;
   }
 
+  // Rage cutscene: it hangs in place, throws off sparks and cannot be hurt, giving the player a breather
+  if (boss.transition > 0) {
+    boss.transition -= 1;
+    s.shake = Math.max(s.shake, 4);
+    if (boss.transition % 4 === 0) {
+      emit(s, 'spark', boss.x + rand(0, boss.width), boss.y + rand(0, boss.height), rand(-3, 3), rand(-3, 3), rand(10, 18), 1.8);
+    }
+    if (boss.transition % 18 === 0) emit(s, 'ring', boss.x + boss.width / 2, boss.y + boss.height / 2, 0, 0, 20, 90);
+    return;
+  }
+  const ratio = boss.hp / boss.maxHp;
+  const nextStage = boss.stage === 0 && ratio < 0.5 ? 1 : boss.stage < 2 && ratio < 0.2 ? 2 : 0;
+  if (nextStage) {
+    boss.stage = nextStage as 1 | 2;
+    boss.transition = BOSS_RAGE_FRAMES;
+    s.enemyBullets = [];
+    s.flash = Math.max(s.flash, 0.7);
+    s.shake = Math.max(s.shake, 16);
+    s.hitStop = Math.max(s.hitStop, 6);
+    emit(s, 'flash', boss.x + boss.width / 2, boss.y + boss.height / 2, 0, 0, 12, 160);
+    emit(s, 'ring', boss.x + boss.width / 2, boss.y + boss.height / 2, 0, 0, 30, 420);
+    setBanner(s, nextStage === 1 ? 'ENRAGED!' : 'FINAL STAND', `${bossTitle(s.config.bossIndex)} ${nextStage === 1 ? 'GOES BERSERK' : 'FIGHTS TO THE END'}`, 100);
+    onSound('warning');
+    return;
+  }
+
   const p2 = boss.phase === 2;
   const def = BOSS_DEFS[boss.kind];
   const ox = boss.x + 6;
@@ -818,7 +857,7 @@ const updateBoss = (s: GameState, onSound: SoundFn) => {
   const since = s.frameCount - boss.lastFiredFrame;
   // Repeat bosses come back as Mk II, III...: they fire faster and add extra shots to each pattern
   const mk = bossTier(s.config.bossIndex);
-  const pace = 1 + 0.2 * mk;
+  const pace = (1 + 0.2 * mk) * (boss.stage >= 2 ? 1.3 : 1);
   const top = 50;
   const bottom = GROUND_Y - boss.height;
 
@@ -977,7 +1016,8 @@ const detonateBomb = (s: GameState, onSound: SoundFn) => {
   s.score += cleared * BOMB_BULLET_SCORE;
 
   s.enemies.forEach(e => { if (e.hp > 0) damageTarget(e, 999); });
-  if (s.boss && s.boss.dying === 0 && s.boss.hp > 0) damageTarget(s.boss, s.boss.maxHp * BOMB_BOSS_DAMAGE);
+  if (s.boss && bossVulnerable(s.boss)) damageTarget(s.boss, s.boss.maxHp * BOMB_BOSS_DAMAGE);
+  s.hitStop = Math.max(s.hitStop, 5);
 
   emit(s, 'flash', cx, cy, 0, 0, 14, 260);
   emit(s, 'ring', cx, cy, 0, 0, 26, 800);
@@ -1145,7 +1185,10 @@ const reapEnemies = (s: GameState, onSound: SoundFn) => {
     if (e.hp > 0) continue;
     const def = ENEMY_DEFS[e.type];
     spawnExplosion(s, e.x + e.width / 2, e.y + e.height / 2, def.boom);
-    if (def.boom > 1.2) s.shake = Math.max(s.shake, 4 + def.boom * 2);
+    if (def.boom > 1.2) {
+      s.shake = Math.max(s.shake, 4 + def.boom * 2);
+      s.hitStop = Math.max(s.hitStop, 3);
+    }
     onSound('destroy');
     s.combo += 1;
     s.comboTimer = COMBO_WINDOW;
@@ -1171,6 +1214,7 @@ const reapEnemies = (s: GameState, onSound: SoundFn) => {
   const boss = s.boss;
   if (boss && boss.dying === 0 && boss.hp <= 0) {
     boss.dying = 1;
+    s.hitStop = Math.max(s.hitStop, 10);
     s.score += 500;
     addPopup(s, boss.x + boss.width / 2, boss.y, '+500', '#ffb23e', true);
     s.enemyBullets = [];
@@ -1203,7 +1247,7 @@ const resolvePlayerHits = (s: GameState, onSound: SoundFn) => {
     }
   }
 
-  if (s.boss && s.boss.dying === 0 && isRectCollision(hb, s.boss)) {
+  if (s.boss && s.boss.dying === 0 && s.boss.transition === 0 && isRectCollision(hb, s.boss)) {
     hurtPlayer(s, BOSS_CONTACT_DAMAGE, onSound);
   }
 };
@@ -1256,6 +1300,11 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
     s.endTimer += 1;
     s.timeScale = 1;
     updateEffects(s);
+    return;
+  }
+
+  if (s.hitStop > 0) {
+    s.hitStop -= 1;
     return;
   }
 

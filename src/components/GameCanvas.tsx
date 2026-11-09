@@ -10,7 +10,7 @@ import {
 } from '../engine/GameLoop';
 import { MISSILES } from '../engine/Weapons';
 import { POWERUPS, POWERUP_KINDS } from '../engine/PowerUps';
-import { renderFrame } from '../render/Renderer';
+import { renderFrame, LOW_HP_RATIO } from '../render/Renderer';
 import { computeRunReward, computeStars, REPLAY_REWARD_FACTOR, STAR_BONUS } from '../state/Progress';
 import { showRewardedAd } from '../services/Ads';
 import { ControlsOverlay } from './ControlsOverlay';
@@ -65,6 +65,7 @@ export const GameCanvas = (props: Props) => {
   const gameState = useRef<GameState>(createInitialState(level, loadout));
   const requestRef = useRef<number>(0);
   const isPaused = useRef<boolean>(false);
+  const lastBeat = useRef(-1);
   const lastTime = useRef<number>(0);
   const accumulator = useRef<number>(0);
   const finished = useRef<boolean>(false);
@@ -120,6 +121,11 @@ export const GameCanvas = (props: Props) => {
 
       const s = gameState.current;
       if (s.status === 'playing') playMusic(s.bossState > 0 ? 'boss' : 'battle');
+      // Heartbeat haptic while the hull is nearly gone: two soft thumps every ~1.2s
+      if (steps > 0 && s.status === 'playing' && s.hp > 0 && s.hp / s.maxHp <= LOW_HP_RATIO && s.frameCount % 72 === 0 && lastBeat.current !== s.frameCount) {
+        lastBeat.current = s.frameCount;
+        buzz([0, 22, 110, 22]);
+      }
       if (s.status !== 'playing' && s.endTimer > RESULT_DELAY_FRAMES && !finished.current && !offered.current) {
         if (s.status === 'lost' && continuesUsed.current < MAX_CONTINUES) {
           offered.current = true;
@@ -341,7 +347,7 @@ export const GameCanvas = (props: Props) => {
 
       {bannerOpacity > 0 && s.banner && (
         <View style={styles.bannerLayer} pointerEvents="none">
-          <Text style={[styles.bannerTitle, { opacity: bannerOpacity }, s.banner.title === 'WARNING' && styles.warning]}>
+          <Text style={[styles.bannerTitle, { opacity: bannerOpacity }, (s.banner.title === 'WARNING' || s.banner.title === 'ENRAGED!' || s.banner.title === 'FINAL STAND') && styles.warning]}>
             {s.banner.title}
           </Text>
           {!!s.banner.sub && <Text style={[styles.bannerSub, { opacity: bannerOpacity }]}>{s.banner.sub}</Text>}
