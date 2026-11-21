@@ -24,8 +24,10 @@ const shootPlayer = (s: GameState, kind: 'bullet' | 'orb' = 'bullet') => {
 
 describe('hit points', () => {
   it('starts with the armor-based hull', () => {
-    expect(createInitialState(1, loadout(1)).hp).toBe(5);
-    expect(createInitialState(1, loadout(3)).maxHp).toBe(9);
+    expect(createInitialState(1, loadout(1)).hp).toBe(armorMaxHp(1));
+    expect(createInitialState(1, loadout(3)).maxHp).toBe(armorMaxHp(3));
+    expect(armorMaxHp(1)).toBeLessThanOrEqual(3); // a lean hull: every hit counts
+    expect(armorMaxHp(5)).toBeGreaterThan(armorMaxHp(1));
   });
 
   it('a hit costs the shot damage, then grants brief invulnerability', () => {
@@ -33,14 +35,14 @@ describe('hit points', () => {
     s.plane.invulnerable = 0;
     shootPlayer(s);
     step(s);
-    expect(s.hp).toBe(4);
+    expect(s.hp).toBe(armorMaxHp(1) - 1);
     expect(s.status).toBe('playing');
     expect(s.plane.alive).toBe(true);
     expect(s.plane.invulnerable).toBeGreaterThan(HIT_INVULNERABLE_FRAMES - 3);
 
     shootPlayer(s);
     step(s);
-    expect(s.hp).toBe(4); // protected while invulnerable
+    expect(s.hp).toBe(armorMaxHp(1) - 1); // protected while invulnerable
   });
 
   it('heavy shots hurt more', () => {
@@ -48,7 +50,7 @@ describe('hit points', () => {
     s.plane.invulnerable = 0;
     shootPlayer(s, 'orb');
     step(s);
-    expect(s.hp).toBe(3);
+    expect(s.hp).toBe(armorMaxHp(1) - 2);
   });
 
   it('losing the last hit point ends the run and continue restores everything', () => {
@@ -93,7 +95,7 @@ describe('medic pickups', () => {
     s.plane.vy = 0;
     step(s);
     expect(s.pickups).toHaveLength(0);
-    expect(s.hp).toBe(1 + medicHeal(5));
+    expect(s.hp).toBe(Math.min(s.maxHp, 1 + medicHeal(s.maxHp)));
   });
 
   it('never heals past the maximum', () => {

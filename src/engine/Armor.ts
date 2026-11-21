@@ -1,7 +1,7 @@
 export const MAX_ARMOR_LEVEL = 5;
 
 // Hit points per armor level (index = level - 1)
-const HULL_POINTS = [5, 7, 9, 11, 14];
+const HULL_POINTS = [3, 4, 5, 6, 8];
 
 export const armorMaxHp = (level: number) => HULL_POINTS[Math.min(level, MAX_ARMOR_LEVEL) - 1];
 
