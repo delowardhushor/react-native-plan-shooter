@@ -71,7 +71,7 @@ describe('difficulty beyond level 12', () => {
   });
 
   it('announces a new enemy on its first level', () => {
-    expect(createInitialState(13, loadout).banner?.sub).toBe('NEW ENEMY: AEGIS');
+    expect(createInitialState(13, loadout).banner?.sub).toContain('NEW ENEMY: AEGIS'); // 13 is also an escort level
     expect(createInitialState(12, loadout).banner?.sub).toBe('BOSS BATTLE AHEAD');
     expect(createInitialState(28, loadout).banner?.sub).toMatch(/^DESTROY \d+ ENEMY PLANES$/);
   });

@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { COLOR_ACCENT, COLOR_TEXT, SCREEN_WIDTH } from '../engine/Constants';
 import { bossTitle } from '../engine/Enemies';
-import { BOSS_EVERY, MODE_INFO, isBossLevel, levelMode } from '../engine/Levels';
+import { BOSS_EVERY, MODE_INFO, isBossLevel, isSpecialMode, levelMode } from '../engine/Levels';
 import { biomeAccentFor, biomeNameFor } from '../render/Backdrop';
 import { MAX_STARS, REPLAY_REWARD_FACTOR, equippedSkin, isCleared, starsFor, type Progress } from '../state/Progress';
 import { MenuBackdrop } from './MenuBackdrop';
@@ -33,7 +33,7 @@ const LevelNode = ({ level, progress, accent, onPress }: NodeProps) => {
   const stars = starsFor(progress, level);
   const bossName = boss ? bossTitle(level / BOSS_EVERY) : '';
   const mode = levelMode(level);
-  const special = mode === 'survival' || mode === 'bonus';
+  const special = isSpecialMode(mode);
   const tone = boss ? '#ff4a3d' : special ? MODE_INFO[mode].color : accent;
 
   return (

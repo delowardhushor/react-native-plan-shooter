@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { AppState, Linking, StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { Canvas, Picture } from '@shopify/react-native-skia';
 import {
-  PLAYER_SPEED, MAX_CONTINUES, COLOR_TEXT, COLOR_PANEL, COLOR_PANEL_BORDER, COLOR_ACCENT
+  PLAYER_SPEED, MAX_CONTINUES, SCREEN_WIDTH, COLOR_TEXT, COLOR_PANEL, COLOR_PANEL_BORDER, COLOR_ACCENT
 } from '../engine/Constants';
 import {
   COMBO_WINDOW, bombCharge, comboMultiplier, isOnFire, createInitialState, updateGameState, revivePlayer, missileCharge,
@@ -12,7 +12,7 @@ import { MISSILES } from '../engine/Weapons';
 import { POWERUPS, POWERUP_KINDS } from '../engine/PowerUps';
 import { renderFrame, LOW_HP_RATIO } from '../render/Renderer';
 import { summarizeRun, type RunSummary } from '../state/Missions';
-import { computeRunReward, computeStars, REPLAY_REWARD_FACTOR, STAR_BONUS } from '../state/Progress';
+import { computeEndlessReward, computeRunReward, computeStars, REPLAY_REWARD_FACTOR, STAR_BONUS } from '../state/Progress';
 import { showRewardedAd } from '../services/Ads';
 import { ControlsOverlay } from './ControlsOverlay';
 import { GlassButton, Panel, SoundToggle, Stars } from './ui';
@@ -22,6 +22,9 @@ interface Props {
   level: number;
   loadout: Loadout;
   bestScore: number;
+  endless?: boolean;  // endless mode: wave after wave until the hull is gone
+  endlessBest?: { wave: number; score: number };
+  completedMissions: (summary: RunSummary) => string[]; // daily missions this run would complete
   isReplay: boolean;  // replaying an already cleared level
   prevStars: number;  // best stars earned on this level so far
   showRatePrompt: boolean;
@@ -41,6 +44,7 @@ interface Result {
   askRating: boolean;
   stars: number;
   starBonus: number;
+  missions: string[];
 }
 
 const STORE_URL = 'market://details?id=com.planeshooter.planeshooter';
@@ -63,7 +67,7 @@ export const GameCanvas = (props: Props) => {
   const propsRef = useRef(props);
   propsRef.current = props;
 
-  const gameState = useRef<GameState>(createInitialState(level, loadout));
+  const gameState = useRef<GameState>(createInitialState(level, loadout, props.endless));
   const requestRef = useRef<number>(0);
   const isPaused = useRef<boolean>(false);
   const lastBeat = useRef(-1);
@@ -87,15 +91,19 @@ export const GameCanvas = (props: Props) => {
     const s = gameState.current;
     const won = s.status === 'won';
     const stars = won ? computeStars(s.hp / s.maxHp, continuesUsed.current) : 0;
-    const { isReplay, prevStars } = propsRef.current;
-    const reward = computeRunReward({ won, score: s.score, level: s.level, isReplay, stars, prevStars });
+    const { isReplay, prevStars, endless, endlessBest } = propsRef.current;
+    const reward = endless
+      ? computeEndlessReward(s.score)
+      : computeRunReward({ won, score: s.score, level: s.level, isReplay, stars, prevStars });
     const starBonus = won ? Math.max(0, stars - prevStars) * STAR_BONUS : 0;
     setOfferContinue(false);
     // The rating nudge appears once, right after the first boss falls, when the player is happiest
     const askRating = won && s.config.isBoss && propsRef.current.showRatePrompt;
     if (askRating) propsRef.current.onRatePromptShown();
-    setResult({ won, reward, doubled: false, newBest: s.score > propsRef.current.bestScore, askRating, stars, starBonus });
-    propsRef.current.onFinish(won, reward, s.score, stars, summarizeRun(s, won, stars));
+    const summary = summarizeRun(s, won, stars);
+    const newBest = endless ? s.score > (endlessBest?.score ?? 0) : s.score > propsRef.current.bestScore;
+    setResult({ won, reward, doubled: false, newBest, askRating, stars, starBonus, missions: propsRef.current.completedMissions(summary) });
+    propsRef.current.onFinish(won, reward, s.score, stars, summary);
     playMusic(null);
     if (won) {
       playSound('win');
@@ -230,17 +238,22 @@ export const GameCanvas = (props: Props) => {
 
   const bossFight = !!s.boss && s.boss.dying === 0;
   const survival = cfg.mode === 'survival';
+  const escort = cfg.mode === 'escort';
   const progressLabel = survival ? 'SURVIVE'
+    : escort ? 'CONVOY'
     : cfg.isBoss && s.kills >= cfg.killTarget ? 'BOSS'
       : cfg.isBoss ? 'WARM-UP'
-        : cfg.mode === 'bonus' ? 'BONUS' : 'ENEMIES';
+        : cfg.mode === 'bonus' ? 'BONUS' : s.endless ? `WAVE ${s.wave}` : 'ENEMIES';
   const progressValue = survival
     ? Math.min(1, s.frameCount / cfg.surviveFrames)
+    : escort && s.transport
+      ? Math.max(0, Math.min(1, (s.transport.x + s.transport.width) / (SCREEN_WIDTH + s.transport.width)))
     : bossFight && s.boss
       ? Math.max(0, s.boss.hp) / s.boss.maxHp
       : cfg.isBoss && s.bossState > 0 ? 1 : Math.min(1, s.kills / cfg.killTarget);
   const progressText = survival
     ? `${Math.max(0, Math.ceil((cfg.surviveFrames - s.frameCount) / 60))}s`
+    : escort && s.transport ? `HP ${Math.max(0, s.transport.hp)}`
     : bossFight ? '' : `${Math.min(s.kills, cfg.killTarget)}/${cfg.killTarget}`;
 
   const hullRatio = s.hp / s.maxHp;
@@ -297,8 +310,8 @@ export const GameCanvas = (props: Props) => {
 
         <View style={styles.cluster}>
           <View style={styles.panel}>
-            <Text style={styles.label}>LEVEL</Text>
-            <Text style={styles.value}>{s.level}</Text>
+            <Text style={styles.label}>{s.endless ? 'WAVE' : 'LEVEL'}</Text>
+            <Text style={styles.value}>{s.endless ? s.wave : s.level}</Text>
           </View>
           <TouchableOpacity onPress={togglePause} style={[styles.panel, styles.pauseBtn]} activeOpacity={0.7}>
             <View style={styles.pauseIcon}>
@@ -391,9 +404,13 @@ export const GameCanvas = (props: Props) => {
       {offerContinue && (
         <View style={[styles.overlayLayer, styles.dim]}>
           <Panel style={styles.card}>
-            <Text style={[styles.title, styles.loseTitle]}>SHOT DOWN</Text>
-            <Text style={styles.stats}>LEVEL {s.level}  ·  SCORE {s.score}  ·  KILLS {s.kills}</Text>
-            <Text style={styles.hint}>Watch a short ad to rejoin the fight with a fully repaired hull.</Text>
+            <Text style={[styles.title, styles.loseTitle]}>{s.failReason === 'convoy' ? 'CONVOY LOST' : 'SHOT DOWN'}</Text>
+            <Text style={styles.stats}>{s.endless ? `WAVE ${s.wave}` : `LEVEL ${s.level}`}  ·  SCORE {s.score}  ·  KILLS {s.totalKills}</Text>
+            <Text style={styles.hint}>
+              {s.failReason === 'convoy'
+                ? 'Watch a short ad to rejoin with the convoy fully repaired.'
+                : 'Watch a short ad to rejoin the fight with a fully repaired hull.'}
+            </Text>
             {!!adMessage && <Text style={styles.adMessage}>{adMessage}</Text>}
             <View style={styles.buttons}>
               <GlassButton
@@ -414,10 +431,10 @@ export const GameCanvas = (props: Props) => {
           <Panel style={styles.card}>
             <Text style={[styles.title, result.won ? styles.winTitle : styles.loseTitle]}>
               {result.won
-                ? (cfg.isBoss ? 'BOSS DEFEATED!' : survival ? 'SURVIVED!' : cfg.mode === 'bonus' ? 'BONUS COMPLETE' : 'LEVEL COMPLETE')
-                : 'MISSION FAILED'}
+                ? (cfg.isBoss ? 'BOSS DEFEATED!' : survival ? 'SURVIVED!' : escort ? 'CONVOY SAFE!' : cfg.mode === 'bonus' ? 'BONUS COMPLETE' : 'LEVEL COMPLETE')
+                : s.endless ? `WAVE ${s.wave} REACHED` : s.failReason === 'convoy' ? 'CONVOY LOST' : 'MISSION FAILED'}
             </Text>
-            <Text style={styles.stats}>LEVEL {s.level}  ·  SCORE {s.score}  ·  KILLS {s.kills}</Text>
+            <Text style={styles.stats}>{s.endless ? `WAVE ${s.wave}` : `LEVEL ${s.level}`}  ·  SCORE {s.score}  ·  KILLS {s.totalKills}</Text>
             {result.won && (
               <View style={styles.resultStars}>
                 <Stars count={result.stars} size={30} />
@@ -425,6 +442,9 @@ export const GameCanvas = (props: Props) => {
             )}
             {result.newBest && s.score > 0 && <Text style={styles.newBest}>★ NEW BEST SCORE ★</Text>}
             {s.bestCombo >= 5 && <Text style={styles.comboStat}>BEST COMBO  {s.bestCombo}</Text>}
+            {result.missions.map(label => (
+              <Text key={label} style={styles.missionDone}>✓ MISSION COMPLETE  ·  {label.toUpperCase()}</Text>
+            ))}
             {props.isReplay && <Text style={styles.replayNote}>REPLAY · {Math.round(REPLAY_REWARD_FACTOR * 100)}% POINTS</Text>}
             {result.starBonus > 0 && <Text style={styles.replayNote}>NEW STAR BONUS  +{result.starBonus}</Text>}
             <View style={styles.rewardRow}>
@@ -457,6 +477,7 @@ export const GameCanvas = (props: Props) => {
 
 const styles = StyleSheet.create({
   resultStars: { alignItems: 'center', marginBottom: 6 },
+  missionDone: { color: '#3ecf7a', fontSize: 10, fontWeight: '900', letterSpacing: 1.5, textAlign: 'center', marginTop: 3 },
   replayNote: { color: 'rgba(255,255,255,0.7)', fontSize: 10, fontWeight: '900', letterSpacing: 2, textAlign: 'center', marginTop: 2 },
   popupLayer: { ...StyleSheet.absoluteFill, zIndex: 15 },
   popup: { position: 'absolute', width: 120, alignItems: 'center' },

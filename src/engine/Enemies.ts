@@ -13,6 +13,7 @@ export enum EnemyType {
   MINELAYER = 8, // slow carrier that seeds the screen with drifting plasma mines
   SPLITTER = 9,  // tough hull that breaks into two swarm drones when destroyed
   TELEPORTER = 10, // blinks into the player's lane (after a warning) and fires a volley
+  TURRET = 11,   // ground emplacement that scrolls past with the terrain and fires up at the player
 }
 
 export const ENEMY_NAMES: Record<EnemyType, string> = {
@@ -27,6 +28,7 @@ export const ENEMY_NAMES: Record<EnemyType, string> = {
   [EnemyType.MINELAYER]: 'MINELAYER',
   [EnemyType.SPLITTER]: 'SPLITTER',
   [EnemyType.TELEPORTER]: 'TELEPORTER',
+  [EnemyType.TURRET]: 'TURRET',
 };
 
 export interface EnemyDef {
@@ -48,6 +50,7 @@ export const ENEMY_DEFS: Record<EnemyType, EnemyDef> = {
   [EnemyType.MINELAYER]: { size: { width: 76, height: 34 }, hp: 9, score: 100, boom: 1.8 },
   [EnemyType.SPLITTER]: { size: { width: 54, height: 26 }, hp: 5, score: 60, boom: 1.3 },
   [EnemyType.TELEPORTER]: { size: { width: 46, height: 22 }, hp: 4, score: 70, boom: 1.2 },
+  [EnemyType.TURRET]: { size: { width: 42, height: 26 }, hp: 4, score: 50, boom: 1.1 },
 };
 
 export interface BossDef {

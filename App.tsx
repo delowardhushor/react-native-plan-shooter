@@ -14,7 +14,7 @@ import { MAX_ARMOR_LEVEL, armorMaxHp, armorUpgradeCost } from './src/engine/Armo
 import {
   MAX_CANNON_LEVEL, MAX_MISSILE_LEVEL, MISSILES, cannonUpgradeCost, missileUpgradeCost, type MissileType,
 } from './src/engine/Weapons';
-import { applyRunSummary, claimAchievement, claimMission } from './src/state/Missions';
+import { applyRunSummary, claimAchievement, claimMission, completedMissions } from './src/state/Missions';
 import { claimDaily, equippedSkin, isSkinUnlocked, loadProgress, saveProgress, starsFor, type Progress } from './src/state/Progress';
 
 type Screen = 'menu' | 'upgrades' | 'skins' | 'campaign' | 'missions' | 'game';
@@ -24,6 +24,7 @@ interface Run {
   level: number;
   loadout: Loadout;
   bestScore: number; // best score when the run began, so the result card can flag a new record
+  endless: boolean;  // endless mode run
   isReplay: boolean; // replaying a cleared level (pays reduced points)
   prevStars: number; // best stars on this level before the run
 }
@@ -60,10 +61,10 @@ const App = () => {
     });
   }, []);
 
-  const startRun = (level: number) => {
+  const startRun = (level: number, endless = false) => {
     if (!progress) return;
-    setRun(r => ({ id: (r?.id ?? 0) + 1, level, loadout: loadoutOf(progress), bestScore: progress.bestScore,
-      isReplay: level < progress.level, prevStars: starsFor(progress, level),
+    setRun(r => ({ id: (r?.id ?? 0) + 1, level, loadout: loadoutOf(progress), bestScore: progress.bestScore, endless,
+      isReplay: !endless && level < progress.level, prevStars: endless ? 0 : starsFor(progress, level),
     }));
     setScreen('game');
   };
@@ -128,21 +129,27 @@ const App = () => {
           bestScore={run.bestScore}
           showRatePrompt={!progress.ratePrompted}
           onRatePromptShown={actions.markRatePrompted}
+          endless={run.endless}
+          endlessBest={progress.endlessBest}
+          completedMissions={summary => completedMissions(progress, summary)}
           isReplay={run.isReplay}
           prevStars={run.prevStars}
           onFinish={(won, reward, score, stars, summary) =>
             update(p => applyRunSummary({
               ...p,
               points: p.points + reward,
-              bestScore: Math.max(p.bestScore, score),
-              stars: won ? { ...p.stars, [run.level]: Math.max(p.stars[run.level] ?? 0, stars) } : p.stars,
+              bestScore: run.endless ? p.bestScore : Math.max(p.bestScore, score),
+              stars: won && !run.endless ? { ...p.stars, [run.level]: Math.max(p.stars[run.level] ?? 0, stars) } : p.stars,
               // Only advance when the player beat their frontier level
-              level: won && run.level === p.level ? p.level + 1 : p.level,
+              level: won && !run.endless && run.level === p.level ? p.level + 1 : p.level,
+              endlessBest: run.endless
+                ? { wave: Math.max(p.endlessBest.wave, summary.endlessWave ?? 0), score: Math.max(p.endlessBest.score, score) }
+                : p.endlessBest,
             }, summary))
           }
           onBonusPoints={actions.addPoints}
           onNext={() => startRun(run.level + 1)}
-          onRetry={() => startRun(run.level)}
+          onRetry={() => startRun(run.level, run.endless)}
           onMenu={() => setScreen('menu')}
         />
       );
@@ -163,6 +170,7 @@ const App = () => {
           onSkins={() => setScreen('skins')}
           onCampaign={() => setScreen('campaign')}
           onMissions={() => setScreen('missions')}
+          onEndless={() => startRun(progress.level, true)}
           onAdPoints={actions.addPoints}
           onClaimDaily={actions.claimDaily}
         />

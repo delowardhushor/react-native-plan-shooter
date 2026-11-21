@@ -18,7 +18,8 @@ describe('level modes', () => {
     for (let l = 1; l <= 120; l++) {
       if (l % 3 === 0) expect(levelMode(l)).toBe('boss');
     }
-    expect(levelMode(7)).toBe('normal');
+    expect([7, 13, 19].map(levelMode)).toEqual(['escort', 'escort', 'escort']);
+    expect(levelMode(1)).toBe('normal'); // escort waits until level 7
     expect(levelMode(10)).toBe('normal');
   });
 

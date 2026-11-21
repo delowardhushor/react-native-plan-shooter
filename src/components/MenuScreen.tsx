@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { COLOR_ACCENT, COLOR_TEXT } from '../engine/Constants';
 import { bossTitle } from '../engine/Enemies';
-import { BOSS_EVERY, MODE_INFO, getLevelConfig, isBossLevel } from '../engine/Levels';
+import { BOSS_EVERY, MODE_INFO, getLevelConfig, isBossLevel, isSpecialMode } from '../engine/Levels';
 import { MAX_ARMOR_LEVEL, armorUpgradeCost } from '../engine/Armor';
 import {
   MAX_CANNON_LEVEL, MAX_MISSILE_LEVEL, MISSILES, MISSILE_TYPES, cannonUpgradeCost, missileUpgradeCost,
@@ -22,6 +22,7 @@ interface Props {
   onSkins: () => void;
   onCampaign: () => void;
   onMissions: () => void;
+  onEndless: () => void;
   onAdPoints: (points: number) => void;
   onClaimDaily: () => void;
 }
@@ -78,7 +79,7 @@ const Chip = ({ label, value }: { label: string; value: string }) => (
   </View>
 );
 
-export const MenuScreen = ({ progress, onPlay, onUpgrades, onSkins, onCampaign, onMissions, onAdPoints, onClaimDaily }: Props) => {
+export const MenuScreen = ({ progress, onPlay, onUpgrades, onSkins, onCampaign, onMissions, onEndless, onAdPoints, onClaimDaily }: Props) => {
   const [, setTick] = useState(0);
   const daily = dailyStatus(progress);
   const showDaily = daily.claimable && dailyDismissedOn !== dayKey(new Date());
@@ -122,6 +123,12 @@ export const MenuScreen = ({ progress, onPlay, onUpgrades, onSkins, onCampaign, 
           </View>
         </View>
         <View style={styles.headerRight}>
+          <GlassButton
+            label="ENDLESS"
+            sublabel={progress.endlessBest.wave ? `BEST WAVE ${progress.endlessBest.wave}` : undefined}
+            small
+            onPress={onEndless}
+          />
           <GlassButton label="CAMPAIGN" small onPress={onCampaign} />
           <GlassButton
             label="MISSIONS"
@@ -157,10 +164,11 @@ export const MenuScreen = ({ progress, onPlay, onUpgrades, onSkins, onCampaign, 
             <View style={styles.bossTag}>
               <Text style={styles.bossTagText}>BOSS · {bossTitle(cfg.bossIndex)}</Text>
             </View>
-          ) : cfg.mode === 'survival' || cfg.mode === 'bonus' ? (
+          ) : isSpecialMode(cfg.mode) ? (
             <View style={[styles.bossTag, { borderColor: MODE_INFO[cfg.mode].color, backgroundColor: `${MODE_INFO[cfg.mode].color}33` }]}>
               <Text style={[styles.bossTagText, { color: MODE_INFO[cfg.mode].color }]}>
-                {cfg.mode === 'survival' ? `SURVIVAL · ${Math.round(cfg.surviveFrames / 60)}S` : 'BONUS RUN · 2X SCORE'}
+                {cfg.mode === 'survival' ? `SURVIVAL · ${Math.round(cfg.surviveFrames / 60)}S`
+                  : cfg.mode === 'escort' ? 'ESCORT THE CONVOY' : 'BONUS RUN · 2X SCORE'}
               </Text>
             </View>
           ) : (

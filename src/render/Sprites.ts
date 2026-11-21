@@ -367,6 +367,26 @@ const TELEPORTER_PALETTE: JetPalette = {
   canopy: ['#fff0fb', '#d03fb0'], accent: '#ff5fd0',
 };
 
+// Friendly convoy transport: pale hull with green trim, drawn as the bomber hull
+const TRANSPORT_PALETTE: JetPalette = {
+  bodyTop: '#f2f8f2', bodyMid: '#5fb08a', bodyLow: '#1d4a38',
+  wingNear: ['#8fd0ae', '#2a6a4e'], wingFar: '#1a3a2c', fin: '#7fc8a0',
+  canopy: ['#dff9ff', '#2a8fd0'], accent: '#3aff9a',
+};
+
+export const TURRET_FRAME = { width: 42, height: 26 };
+
+// Ground turret: armoured base, domed housing and a raised barrel (authored facing right, mirrored on screen)
+const drawTurret = (c: SkCanvas) => {
+  c.drawPath(poly([[2, 26], [6, 15], [36, 15], [40, 26]]), shaderPaint(linear(0, 15, 0, 26, ['#7b8691', '#3a424b'])));
+  c.drawRect(Skia.XYWHRect(4, 22, 34, 2), fillPaint('#ffcf3a'));
+  c.drawPath(poly([[28, 12], [40, 2], [43, 5], [33, 15]]), fillPaint('#2a3037'));
+  c.drawPath(poly([[28, 12], [40, 2], [41.5, 3.4], [30, 13.5]]), fillPaint('#5c6670'));
+  c.drawOval(Skia.XYWHRect(10, 5, 22, 17), shaderPaint(linear(0, 5, 0, 22, ['#c9d1d8', '#6a7681', '#2b323a'], [0, 0.5, 1])));
+  c.drawCircle(21, 13, 3, fillPaint('#ff3b2a'));
+  c.drawCircle(21, 13, 1.2, fillPaint('#ffffff'));
+};
+
 // Swept delta wing: small and quick as the rusher, larger with wing pods as the Phantom boss
 const drawDelta = (c: SkCanvas, pal: JetPalette, boss: boolean) => {
   c.drawPath(poly([[30, 9], [14, 0.5], [8, 0.5], [16, 9]]), fillPaint(pal.wingFar));
@@ -550,6 +570,7 @@ export const ENEMY_FRAMES: Record<EnemyType, Frame> = {
   [EnemyType.MINELAYER]: BOMBER_FRAME,
   [EnemyType.SPLITTER]: JET_FRAME,
   [EnemyType.TELEPORTER]: DELTA_FRAME,
+  [EnemyType.TURRET]: TURRET_FRAME,
 };
 
 export const ENEMY_GLOWS: Record<EnemyType, Glows> = {
@@ -564,6 +585,7 @@ export const ENEMY_GLOWS: Record<EnemyType, Glows> = {
   [EnemyType.MINELAYER]: [[3, 19.5, 20], [28, 32, 16]],
   [EnemyType.SPLITTER]: [[2, 13.5, 22]],
   [EnemyType.TELEPORTER]: [[2, 10, 20]],
+  [EnemyType.TURRET]: [],
 };
 
 export const BOSS_FRAMES: Frame[] = [GUNSHIP_FRAME, BOMBER_FRAME, DELTA_FRAME, TITAN_FRAME];
@@ -727,6 +749,7 @@ export interface Sprites {
   powerUps: Record<PowerUpKind, SkPicture>;
   powerUpGlows: Record<PowerUpKind, SkImage>;
   shieldBubble: SkImage;
+  transport: SkPicture;
   fireGlow: SkImage;
   drone: SkPicture;
   bullet: SkImage;
@@ -797,6 +820,7 @@ export const getSprites = (): Sprites => {
       [EnemyType.MINELAYER]: record(BOMBER_FRAME.width, BOMBER_FRAME.height, c => drawBomber(c, MINER_PALETTE, false)),
       [EnemyType.SPLITTER]: record(JET_FRAME.width, JET_FRAME.height, c => drawJet(c, SPLITTER_PALETTE)),
       [EnemyType.TELEPORTER]: record(DELTA_FRAME.width, DELTA_FRAME.height, c => drawDelta(c, TELEPORTER_PALETTE, false)),
+      [EnemyType.TURRET]: record(TURRET_FRAME.width, TURRET_FRAME.height, drawTurret),
     },
     bosses: [
       record(GUNSHIP_FRAME.width, GUNSHIP_FRAME.height, c => drawGunship(c, BOSS_PALETTE, true)),
@@ -814,6 +838,7 @@ export const getSprites = (): Sprites => {
     rocket: record(ROCKET_FRAME.width, ROCKET_FRAME.height, drawRocket),
     seeker: record(SEEKER_FRAME.width, SEEKER_FRAME.height, drawSeeker),
     bolt, orb, healGlow, powerUps, powerUpGlows, shieldBubble, fireGlow,
+    transport: record(BOMBER_FRAME.width, BOMBER_FRAME.height, c => drawBomber(c, TRANSPORT_PALETTE, false)),
     drone: record(DRONE_FRAME.width, DRONE_FRAME.height, drawDrone),
     bullet, enemyBullet, flash, engineGlow, engineGlowCyan, fire, smoke,
   };

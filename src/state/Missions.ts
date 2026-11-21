@@ -11,11 +11,12 @@ export type RunSummary = Record<string, number>;
 export const killKey = (type: number) => `kill:${type}`;
 
 // Keys that keep the best value instead of adding up
-const MAX_STATS = new Set(['bestCombo']);
+const MAX_STATS = new Set(['bestCombo', 'endlessWave']);
 
 export const summarizeRun = (s: GameState, won: boolean, stars: number): RunSummary => {
   const summary: RunSummary = {
-    kills: s.kills,
+    kills: s.totalKills,
+    endlessWave: s.endless ? s.wave : 0,
     wins: won ? 1 : 0,
     bossKills: s.stats.bossKills,
     bestCombo: s.bestCombo,
@@ -140,6 +141,9 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'combo1', name: 'ON FIRE', desc: 'Reach a 10 kill combo', target: 10, reward: 50, value: life('bestCombo') },
   { id: 'combo2', name: 'UNSTOPPABLE', desc: 'Reach a 25 kill combo', target: 25, reward: 150, value: life('bestCombo') },
   { id: 'combo3', name: 'RAMPAGE', desc: 'Reach a 50 kill combo', target: 50, reward: 400, value: life('bestCombo') },
+  { id: 'wave1', name: 'SURVIVOR', desc: 'Reach wave 5 in Endless mode', target: 5, reward: 100, value: life('endlessWave') },
+  { id: 'wave2', name: 'UNBREAKABLE', desc: 'Reach wave 10 in Endless mode', target: 10, reward: 300, value: life('endlessWave') },
+  { id: 'wave3', name: 'IMMORTAL', desc: 'Reach wave 20 in Endless mode', target: 20, reward: 800, value: life('endlessWave') },
   { id: 'power', name: 'POWER HUNGRY', desc: 'Collect 25 power-ups', target: 25, reward: 100, value: life('powerUps') },
   { id: 'bomb', name: 'DEMOLITION', desc: 'Use the bomb 20 times', target: 20, reward: 100, value: life('bombs') },
   { id: 'flawless', name: 'UNTOUCHABLE', desc: 'Win 5 levels without being hit', target: 5, reward: 150, value: life('flawless') },
@@ -181,4 +185,11 @@ export const applyRunSummary = (p: Progress, summary: RunSummary, now: Date = ne
 export const unclaimedCount = (p: Progress, now: Date = new Date()) => {
   const missions = ensureMissions(p, now).missions!.items.filter(m => !m.claimed && m.progress >= m.target).length;
   return missions + ACHIEVEMENTS.filter(a => isAchievementClaimable(p, a)).length;
+};
+
+// Labels of the missions this run would newly complete (shown on the result card before the run is applied)
+export const completedMissions = (p: Progress, summary: RunSummary, now: Date = new Date()): string[] => {
+  const before = ensureMissions(p, now).missions!.items;
+  const after = applyRunSummary(p, summary, now).missions!.items;
+  return after.filter((m, i) => !before[i].claimed && before[i].progress < before[i].target && m.progress >= m.target).map(m => m.label);
 };

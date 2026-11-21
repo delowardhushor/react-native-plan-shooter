@@ -14,20 +14,30 @@ export interface SpawnEntry {
 // Most levels are a plain "destroy N planes" stage; every so often the campaign changes pace:
 //  - survival: no kill quota, just stay alive until the clock runs out while the pressure builds
 //  - bonus:    a breather packed with weak fighters, double score and power-up crates
-export type LevelMode = 'normal' | 'boss' | 'survival' | 'bonus';
+//  - escort:   a friendly transport crosses the screen; keep it alive until it reaches the far edge
+export type LevelMode = 'normal' | 'boss' | 'survival' | 'bonus' | 'escort';
 
 export const levelMode = (level: number): LevelMode =>
   isBossLevel(level) ? 'boss'
     : level >= 5 && level % 6 === 5 ? 'survival'
       : level >= 8 && level % 6 === 2 ? 'bonus'
-        : 'normal';
+        : level >= 7 && level % 6 === 1 ? 'escort'
+          : 'normal';
 
 export const MODE_INFO: Record<LevelMode, { name: string; color: string }> = {
   normal: { name: '', color: '' },
   boss: { name: 'BOSS', color: '#ff4a3d' },
   survival: { name: 'SURVIVAL', color: '#ff9d3d' },
   bonus: { name: 'BONUS RUN', color: '#3ecf7a' },
+  escort: { name: 'ESCORT', color: '#4aa8ff' },
 };
+
+// Modes that get their own tag on the menu card and campaign map
+export const isSpecialMode = (mode: LevelMode) => mode === 'survival' || mode === 'bonus' || mode === 'escort';
+
+// Frames the convoy takes to cross the screen, and how sturdy it is
+export const ESCORT_FRAMES = 3000;
+export const escortHpFor = (level: number) => 10 + Math.min(8, Math.floor(level / 4));
 
 // Frames to hold out in a survival level (about 54s on the first one, creeping up to 80s)
 export const surviveFramesFor = (level: number) => 3000 + Math.min(1800, level * 50);
@@ -38,6 +48,7 @@ export interface LevelConfig {
   level: number;
   mode: LevelMode;
   surviveFrames: number;    // survival levels only
+  escortHp: number;         // escort levels only
   isBoss: boolean;
   bossIndex: number;        // 1 for the first boss, 2 for the second...
   killTarget: number;       // enemies to destroy (before the boss appears on boss levels)
@@ -65,6 +76,7 @@ export const ENEMY_UNLOCK_LEVEL: Partial<Record<EnemyType, number>> = {
   [EnemyType.MINELAYER]: 19,
   [EnemyType.SPLITTER]: 10,
   [EnemyType.TELEPORTER]: 22,
+  [EnemyType.TURRET]: 11,
 };
 
 // Enemy planes that make their first appearance on exactly this level
@@ -87,6 +99,7 @@ const buildRoster = (level: number): SpawnEntry[] => {
   if (level >= 16) roster.push({ type: EnemyType.SWARM, weight: 3, max: 8 });
   if (level >= 19) roster.push({ type: EnemyType.MINELAYER, weight: 2, max: 1 });
   if (level >= 10) roster.push({ type: EnemyType.SPLITTER, weight: 3, max: level >= 16 ? 2 : 1 });
+  if (level >= 11) roster.push({ type: EnemyType.TURRET, weight: 3, max: level >= 20 ? 2 : 1 });
   if (level >= 22) roster.push({ type: EnemyType.TELEPORTER, weight: 2, max: level >= 28 ? 2 : 1 });
   return roster;
 };
@@ -101,6 +114,7 @@ export const getLevelConfig = (level: number): LevelConfig => {
     level,
     mode: levelMode(level),
     surviveFrames: levelMode(level) === 'survival' ? surviveFramesFor(level) : 0,
+    escortHp: levelMode(level) === 'escort' ? escortHpFor(level) : 0,
     isBoss,
     bossIndex,
     killTarget: isBoss ? 6 : Math.min(8 + level * 2, 26) + Math.min(10, hard),
@@ -121,6 +135,9 @@ export const applyMode = (c: LevelConfig): LevelConfig => {
   if (c.mode === 'survival') {
     return { ...c, spawnInterval: Math.round(c.spawnInterval * 0.65), maxEnemies: c.maxEnemies + 2 };
   }
+  if (c.mode === 'escort') {
+    return { ...c, maxEnemies: c.maxEnemies + 1, spawnInterval: Math.round(c.spawnInterval * 0.9) };
+  }
   if (c.mode === 'bonus') {
     return {
       ...c,
@@ -132,4 +149,11 @@ export const applyMode = (c: LevelConfig): LevelConfig => {
     };
   }
   return c;
+};
+
+// Endless mode plays every level as a plain kill-quota wave (bosses stay bosses): no survival clock, bonus
+// roster or convoy, so waves chain together without special cases.
+export const getEndlessConfig = (level: number): LevelConfig => {
+  const c = getLevelConfig(level);
+  return c.mode === 'boss' ? c : { ...c, mode: 'normal', surviveFrames: 0, escortHp: 0 };
 };

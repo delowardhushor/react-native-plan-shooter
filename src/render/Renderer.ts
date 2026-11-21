@@ -3,11 +3,11 @@ import { PLANE_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT } from '../engine/Constants';
 import { EnemyType } from '../engine/Enemies';
 import { TELEPORT_WARNING_FRAMES, beamBox, isOnFire, wingmanDrones } from '../engine/GameLoop';
 import { BEAM_FRAMES } from '../engine/Weapons';
-import type { Boss, Enemy, EnemyBullet, GameState, Particle, Pickup } from '../engine/GameLoop';
+import type { Transport, Boss, Enemy, EnemyBullet, GameState, Particle, Pickup } from '../engine/GameLoop';
 import { GROUND_Y, drawBackdrop, drawVignette } from './Backdrop';
 import { createPictureUnbounded, fillPaint, radial, shaderPaint, strokePaint } from './gfx';
 import {
-  BOSS_FRAMES, BOSS_GLOWS, ENEMY_FRAMES, ENEMY_GLOWS, HERO_TIERS, JET_FRAME, MEDIC_FRAME, DRONE_FRAME, ROCKET_FRAME, SEEKER_FRAME,
+  BOMBER_FRAME, BOSS_FRAMES, BOSS_GLOWS, ENEMY_FRAMES, ENEMY_GLOWS, HERO_TIERS, JET_FRAME, MEDIC_FRAME, DRONE_FRAME, ROCKET_FRAME, SEEKER_FRAME,
   getHero, getSprites, type Sprites,
 } from './Sprites';
 
@@ -169,7 +169,7 @@ const drawEnemy = (c: SkCanvas, S: Sprites, e: Enemy, frameCount: number) => {
     blit(c, S.powerUpGlows.pierce, dx, dy, 30 + 20 * t, additivePaint, 0.3 + 0.5 * t);
     if (Math.floor(frameCount / 2) % 2 === 0) return;
   }
-  drawShadow(c, e.x, e.y, e.width, e.height);
+  if (e.type !== EnemyType.TURRET) drawShadow(c, e.x, e.y, e.width, e.height);
   const dashing = e.type === EnemyType.RUSHER && e.mode === 2;
   const glows = ENEMY_GLOWS[e.type].map(([gx, gy, size]) => [gx, gy, dashing ? size * 1.6 : size] as [number, number, number]);
   const tilt = e.type === EnemyType.STANDARD || e.type === EnemyType.BOMBER ? 0 : e.vy * 2.2;
@@ -197,6 +197,22 @@ const drawEnemy = (c: SkCanvas, S: Sprites, e: Enemy, frameCount: number) => {
   if (e.type === EnemyType.SNIPER && e.charge > 0) {
     blit(c, S.flash, e.x + 2, noseY, 10 + 26 * e.charge, additivePaint, 0.4 + 0.6 * e.charge);
   }
+};
+
+const hpBackPaint = fillPaint('rgba(0,0,0,0.55)');
+const hpFillPaint = fillPaint('#4cd97b');
+
+// The friendly convoy: a pale freighter facing right with a hull bar floating above it
+const drawTransport = (c: SkCanvas, S: Sprites, t: Transport, frameCount: number) => {
+  drawShadow(c, t.x, t.y, t.width, t.height);
+  drawAircraft(c, {
+    pic: S.transport, frame: BOMBER_FRAME, x: t.x, y: t.y, w: t.width, h: t.height,
+    flip: false, tilt: 0, hit: t.hitFlash > 0, glows: [[3, 19.5, 22], [28, 32, 18]], frameCount, S,
+  });
+  const ratio = Math.max(0, t.hp / t.maxHp);
+  hpFillPaint.setColor(Skia.Color(ratio > 0.5 ? '#4cd97b' : ratio > 0.25 ? '#ffb23e' : '#ff4d5a'));
+  c.drawRect({ x: t.x + 8, y: t.y - 12, width: t.width - 16, height: 5 }, hpBackPaint);
+  c.drawRect({ x: t.x + 9, y: t.y - 11, width: (t.width - 18) * ratio, height: 3 }, hpFillPaint);
 };
 
 const drawBoss = (c: SkCanvas, S: Sprites, b: Boss, frameCount: number) => {
@@ -283,6 +299,7 @@ export const renderFrame = (state: GameState): SkPicture =>
     const blinkHidden = plane.invulnerable > 0 && Math.floor(plane.invulnerable / 5) % 2 === 0;
     if (playerAlive) drawShadow(c, plane.x, plane.y, plane.width, plane.height);
 
+    if (state.transport) drawTransport(c, S, state.transport, f);
     state.pickups.forEach(p => drawPickup(c, S, p, f));
     state.enemies.forEach(e => drawEnemy(c, S, e, f));
     if (state.boss) drawBoss(c, S, state.boss, f);

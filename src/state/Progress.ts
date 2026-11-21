@@ -34,6 +34,7 @@ export interface Progress {
   lifetime: Record<string, number>; // running totals across all runs (kills, bosses, bombs...)
   missions: DailyMissions | null;
   achClaimed: Record<string, boolean>; // achievements whose reward has been collected
+  endlessBest: { wave: number; score: number };
 }
 
 const KEY = 'planeshooter.progress.v1';
@@ -60,6 +61,7 @@ export const defaultProgress = (): Progress => ({
   lifetime: {},
   missions: null,
   achClaimed: {},
+  endlessBest: { wave: 0, score: 0 },
 });
 
 export const loadProgress = async (): Promise<Progress> => {
@@ -75,6 +77,7 @@ export const loadProgress = async (): Promise<Progress> => {
       stars: { ...saved.stars },
       lifetime: { ...saved.lifetime },
       achClaimed: { ...saved.achClaimed },
+      endlessBest: { ...base.endlessBest, ...saved.endlessBest },
       missiles: {
         homing: { ...base.missiles.homing, ...saved.missiles?.homing },
         blast: { ...base.missiles.blast, ...saved.missiles?.blast },
@@ -165,6 +168,11 @@ export const isCleared = (p: Progress, level: number) => level < p.level;
 // every star above the previous best pays a one-off bonus
 export const REPLAY_REWARD_FACTOR = 0.5;
 export const STAR_BONUS = 15;
+
+// Endless runs pay a steady trickle: the score divided down, so a long run is worth a few levels' pay but
+// can't be farmed faster than the campaign
+export const ENDLESS_REWARD_DIVISOR = 25;
+export const computeEndlessReward = (score: number) => Math.floor(score / ENDLESS_REWARD_DIVISOR);
 
 export const computeRunReward = (o: {
   won: boolean; score: number; level: number; isReplay: boolean; stars: number; prevStars: number;

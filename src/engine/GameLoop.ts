@@ -6,7 +6,7 @@ import {
 } from './Constants';
 import { medicHeal } from './Armor';
 import { PROJECTILES, type ProjectileKind } from './Projectiles';
-import { BONUS_SCORE_MULTIPLIER, applyMode, getLevelConfig, newEnemiesAt, type LevelConfig } from './Levels';
+import { BONUS_SCORE_MULTIPLIER, ESCORT_FRAMES, applyMode, getEndlessConfig, getLevelConfig, newEnemiesAt, type LevelConfig } from './Levels';
 import { BEAM_FRAMES, BEAM_TICK, cannonStats, missileStats, type MissileType } from './Weapons';
 import {
   POWERUPS, POWERUP_KINDS, noPowerUps, RAPID_FIRE_FACTOR, PIERCE_DAMAGE, SHIELD_BREAK_INVULNERABLE_FRAMES, WINGMAN_OFFSET,
@@ -158,6 +158,19 @@ export interface RunStats {
   hitsTaken: number; // hits that got through to the hull (a popped shield doesn't count)
 }
 
+// The friendly convoy ship an escort level asks you to bring across the screen
+export interface Transport extends Box {
+  hp: number;
+  maxHp: number;
+  hitFlash: number;
+}
+
+export const TRANSPORT_SIZE = { width: 84, height: 38 };
+const TRANSPORT_DAMAGE_RAM = 2;
+
+// The ground scrolls at this speed, and ground turrets move with it
+const GROUND_SCROLL = 3;
+
 // The laser beam currently burning, if any
 export interface Beam {
   frames: number; // frames left
@@ -186,6 +199,11 @@ export interface GameState {
   bombRequested: boolean;
   bombLock: number;       // frames during which kills don't recharge the bomb
   beam: Beam | null;
+  transport: Transport | null;
+  failReason: 'hull' | 'convoy';
+  endless: boolean;
+  wave: number;       // endless mode: the current wave (1 in the campaign)
+  totalKills: number; // every kill in the run (kills resets each endless wave)
   spawnTimer: number;
   bossState: 0 | 1 | 2; // 0 = not yet, 1 = warning, 2 = boss fight
   bossTimer: number;
@@ -223,12 +241,13 @@ const bannerSub = (config: LevelConfig) => {
     case 'boss': return 'BOSS BATTLE AHEAD';
     case 'survival': return `${fresh ? `NEW ENEMY: ${fresh}  ·  ` : ''}SURVIVE ${Math.round(config.surviveFrames / 60)} SECONDS`;
     case 'bonus': return 'BONUS RUN  ·  DOUBLE SCORE';
+    case 'escort': return `${fresh ? `NEW ENEMY: ${fresh}  ·  ` : ''}PROTECT THE CONVOY`;
     default: return fresh ? `NEW ENEMY: ${fresh}` : `DESTROY ${config.killTarget} ENEMY PLANES`;
   }
 };
 
-export const createInitialState = (level: number, loadout: Loadout): GameState => {
-  const config = applyMode(getLevelConfig(level));
+export const createInitialState = (level: number, loadout: Loadout, endless = false): GameState => {
+  const config = endless ? getEndlessConfig(level) : applyMode(getLevelConfig(level));
   return {
     plane: {
       x: 20,
@@ -260,6 +279,16 @@ export const createInitialState = (level: number, loadout: Loadout): GameState =
     bombRequested: false,
     bombLock: 0,
     beam: null,
+    transport: config.mode === 'escort'
+      ? {
+        x: -TRANSPORT_SIZE.width - 10, y: GROUND_Y / 2 - TRANSPORT_SIZE.height / 2, ...TRANSPORT_SIZE,
+        hp: config.escortHp, maxHp: config.escortHp, hitFlash: 0,
+      }
+      : null,
+    failReason: 'hull',
+    endless,
+    wave: 1,
+    totalKills: 0,
     spawnTimer: 100,
     bossState: 0,
     bossTimer: 0,
@@ -267,7 +296,7 @@ export const createInitialState = (level: number, loadout: Loadout): GameState =
     powerUps: noPowerUps(),
     dropPity: 0,
     banner: {
-      title: `LEVEL ${level}`,
+      title: endless ? 'WAVE 1' : `LEVEL ${level}`,
       sub: bannerSub(config),
     },
     bannerTimer: 150,
@@ -462,6 +491,7 @@ const hurtPlayer = (s: GameState, amount: number, onSound: SoundFn) => {
   onSound('destroy');
   s.shake = 14;
   s.hitStop = Math.max(s.hitStop, 8);
+  s.failReason = 'hull';
   plane.alive = false;
   plane.vx = 0;
   plane.vy = 0;
@@ -485,6 +515,8 @@ export const revivePlayer = (s: GameState) => {
   plane.vy = 0;
   plane.tilt = 0;
   plane.invulnerable = CONTINUE_INVULNERABLE_FRAMES;
+  s.failReason = 'hull';
+  if (s.transport) s.transport.hp = s.transport.maxHp;
   s.enemyBullets = [];
   s.enemies = s.enemies.filter(e => {
     if (e.x > SCREEN_WIDTH * 0.4) return true;
@@ -503,6 +535,32 @@ const winLevel = (s: GameState) => {
   s.missiles = [];
   s.beam = null;
 };
+
+// Endless mode: clearing a wave rolls straight into a harder one, with a small repair and bomb top-up
+const startNextWave = (s: GameState) => {
+  s.enemies.forEach(e => spawnExplosion(s, e.x + e.width / 2, e.y + e.height / 2, 0.9));
+  s.enemies = [];
+  s.enemyBullets = [];
+  s.missiles = [];
+  s.beam = null;
+  s.wave += 1;
+  s.level += 1;
+  s.config = getEndlessConfig(s.level);
+  s.kills = 0;
+  s.boss = null;
+  s.bossState = 0;
+  s.bossTimer = 0;
+  s.timeScale = 1;
+  s.spawnTimer = 150;
+  if (s.hp < s.maxHp) {
+    s.hp += 1;
+    s.heal = 40;
+  }
+  s.bomb = Math.min(BOMB_MAX, s.bomb + 25);
+  setBanner(s, `WAVE ${s.wave}`, bannerSub(s.config), 150);
+};
+
+const completeLevel = (s: GameState) => (s.endless ? startNextWave(s) : winLevel(s));
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
@@ -549,6 +607,11 @@ const pickEnemyType = (s: GameState): EnemyType => {
 const spawnEnemy = (s: GameState) => {
   const type = pickEnemyType(s);
   const { height } = ENEMY_DEFS[type].size;
+  if (type === EnemyType.TURRET) {
+    // Bolted to the ground, sunk in a little so its base reads as part of the terrain
+    s.enemies.push(makeEnemy(s, type, SCREEN_WIDTH, GROUND_Y - height + 8));
+    return;
+  }
   // Weavers need headroom on both sides of their centre line
   if (type === EnemyType.SWARM) {
     // A V of drones that weave in step
@@ -763,6 +826,15 @@ const updateEnemy = (s: GameState, e: Enemy, onSound: SoundFn) => {
       e.vy = e.y - prevY;
       break;
 
+    case EnemyType.TURRET:
+      e.x -= GROUND_SCROLL;
+      if (plane.alive && e.x < SCREEN_WIDTH - 50 && e.x > plane.x + 140 && s.frameCount - e.lastFiredFrame >= config.roamerFireRate * 1.3) {
+        fireAimed(s, e.x + e.width / 2, e.y + 4, config.enemyBulletSpeed * 0.95);
+        e.lastFiredFrame = s.frameCount;
+        onSound('shoot');
+      }
+      break;
+
     case EnemyType.SPLITTER:
       e.x -= config.enemySpeed * 0.75;
       e.y = clamp(e.baseY + Math.sin(e.age * 0.04) * 18, 50, maxY);
@@ -896,7 +968,7 @@ const updateBoss = (s: GameState, onSound: SoundFn) => {
       s.shake = 22;
       s.flash = 1;
       s.boss = null;
-      winLevel(s);
+      completeLevel(s);
     }
     return;
   }
@@ -1339,6 +1411,7 @@ const reapEnemies = (s: GameState, onSound: SoundFn) => {
     const points = def.score * mult * (s.config.mode === 'bonus' ? BONUS_SCORE_MULTIPLIER : 1);
     s.score += points;
     s.kills += 1;
+    s.totalKills += 1;
     s.stats.killsByType[e.type] = (s.stats.killsByType[e.type] ?? 0) + 1;
     addPopup(s, e.x + e.width / 2, e.y, mult > 1 ? `+${points} x${mult}` : `+${points}`, mult > 1 ? '#ffb23e' : '#ffffff');
     maybeDropPowerUp(s, e, def.boom > 1.2);
@@ -1394,6 +1467,47 @@ const resolvePlayerHits = (s: GameState, onSound: SoundFn) => {
 
   if (s.boss && s.boss.dying === 0 && s.boss.transition === 0 && isRectCollision(hb, s.boss)) {
     hurtPlayer(s, BOSS_CONTACT_DAMAGE, onSound);
+  }
+};
+
+// The convoy ship cruises left to right. Enemy shots and rammers hurt it; if it goes down the mission is lost.
+const updateTransport = (s: GameState, onSound: SoundFn) => {
+  const t = s.transport;
+  if (!t) return;
+  if (t.hitFlash > 0) t.hitFlash -= 1;
+  t.x += (SCREEN_WIDTH + 54) / ESCORT_FRAMES;
+  t.y = GROUND_Y / 2 - t.height / 2 + Math.sin(s.frameCount * 0.02) * 10;
+
+  const hit = (damage: number) => {
+    t.hp -= damage;
+    t.hitFlash = 4;
+    s.shake = Math.max(s.shake, 2);
+    onSound('hit');
+  };
+  for (let i = s.enemyBullets.length - 1; i >= 0; i--) {
+    const b = s.enemyBullets[i];
+    if (!isRectCollision(t, b)) continue;
+    spawnExplosion(s, b.x + b.width / 2, b.y + b.height / 2, 0.5);
+    s.enemyBullets.splice(i, 1);
+    hit(b.damage);
+  }
+  for (let i = s.enemies.length - 1; i >= 0; i--) {
+    const e = s.enemies[i];
+    if (e.hp <= 0 || !isRectCollision(t, e)) continue;
+    spawnExplosion(s, e.x + e.width / 2, e.y + e.height / 2, 1);
+    s.enemies.splice(i, 1);
+    hit(TRANSPORT_DAMAGE_RAM);
+  }
+
+  if (t.hp <= 0 && s.status === 'playing') {
+    spawnExplosion(s, t.x + t.width / 2, t.y + t.height / 2, 2.4);
+    s.shake = 16;
+    s.hitStop = Math.max(s.hitStop, 8);
+    s.enemyBullets = [];
+    s.failReason = 'convoy';
+    s.status = 'lost';
+    s.endTimer = 0;
+    onSound('destroy');
   }
 };
 
@@ -1566,6 +1680,7 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
   s.enemies = s.enemies.filter(e => e.x + e.width > 0);
 
   updateBoss(s, onSound);
+  updateTransport(s, onSound);
   updatePickups(s, onSound);
 
   resolveShots(s, onSound);
@@ -1574,7 +1689,8 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
 
   if (s.status === 'playing') {
     const survived = config.mode === 'survival' && s.frameCount >= config.surviveFrames;
-    const quota = config.mode !== 'survival' && !config.isBoss && s.kills >= config.killTarget;
-    if (survived || quota) winLevel(s);
+    const escorted = config.mode === 'escort' && !!s.transport && s.transport.x >= SCREEN_WIDTH - 40;
+    const quota = config.mode !== 'survival' && config.mode !== 'escort' && !config.isBoss && s.kills >= config.killTarget;
+    if (survived || escorted || quota) completeLevel(s);
   }
 };
