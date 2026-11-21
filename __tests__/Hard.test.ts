@@ -119,7 +119,9 @@ describe('new enemy planes', () => {
     s.plane.invulnerable = 1e9;
     s.config.roster = [{ type: EnemyType.ROAMER, weight: 1, max: 9 }];
     s.spawnTimer = 1;
+    const rnd = jest.spyOn(Math, 'random').mockReturnValue(0.99); // a single roamer, not a formation
     step(s);
+    rnd.mockRestore();
     const e = s.enemies[0];
     expect(e.maxHp).toBeGreaterThan(ENEMY_DEFS[EnemyType.ROAMER].hp);
   });

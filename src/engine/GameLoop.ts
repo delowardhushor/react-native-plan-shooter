@@ -680,7 +680,8 @@ export const spawnFormation = (s: GameState, kind?: FormationKind) => {
     const spacing = 48;
     const lanes = 6;
     const top = clamp(plane.y + plane.height / 2 - (spacing * lanes) / 2, 60, Math.max(61, bottom - spacing * lanes));
-    const gap = Math.floor(Math.random() * (lanes - 1));
+    // The gap is never at the very top or bottom of the band, so it is always a hole in the wall
+    const gap = 1 + Math.floor(Math.random() * (lanes - 3));
     for (let i = 0; i < lanes; i++) {
       if (i === gap || i === gap + 1) continue;
       s.enemies.push(makeEnemy(s, fighter, SCREEN_WIDTH, clamp(top + i * spacing, 60, bottom - fh)));
