@@ -121,6 +121,13 @@ const buildRoster = (level: number): SpawnEntry[] => {
   return roster;
 };
 
+// The first levels are snappier than a pure "gentle" curve: the opening minutes decide whether a new player
+// stays, so there is always something to dodge or shoot. `early` fades out by level 5.
+const earlyBoost = (level: number) => Math.max(0, 5 - level);
+
+// Share of spawns that arrive as a formation (a gate, a V or a snake) instead of a single plane
+export const formationChance = (level: number) => Math.min(0.4, 0.25 + level * 0.01);
+
 // Gentle at first so each level is about learning and positioning; from HARD_FROM everything keeps
 // scaling (more, faster, tougher enemies) up to generous caps
 export const getLevelConfig = (level: number): LevelConfig => {
@@ -135,10 +142,10 @@ export const getLevelConfig = (level: number): LevelConfig => {
     isBoss,
     bossIndex,
     killTarget: isBoss ? 6 : Math.min(8 + level * 2, 26) + Math.min(10, hard),
-    spawnInterval: Math.max(80, 130 - level * 4) - Math.min(30, hard * 2),
-    maxEnemies: Math.min(3 + Math.floor(level / 2), 5) + Math.min(3, Math.floor(hard / 4)),
+    spawnInterval: Math.max(80, 130 - level * 4) - Math.min(30, hard * 2) - earlyBoost(level) * 4,
+    maxEnemies: Math.min(3 + Math.floor(level / 2), 5) + Math.min(3, Math.floor(hard / 4)) + (level <= 3 ? 1 : 0),
     roster: buildRoster(level),
-    enemySpeed: Math.min(1.1 + level * 0.06, 1.9) + Math.min(0.8, hard * 0.03),
+    enemySpeed: Math.min(1.1 + level * 0.06, 1.9) + Math.min(0.8, hard * 0.03) + earlyBoost(level) * 0.05,
     roamerFireRate: Math.max(100, 170 - level * 5) - Math.min(40, hard * 2),
     enemyBulletSpeed: Math.min(3.4 + level * 0.1, 4.6) + Math.min(1, hard * 0.04),
     enemyHpMul: 1 + Math.min(4, hard * 0.08),

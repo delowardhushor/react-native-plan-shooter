@@ -199,7 +199,9 @@ describe('ground turret', () => {
     s.plane.invulnerable = 1e9;
     s.config.roster = [{ type: EnemyType.TURRET, weight: 1, max: 1 }];
     s.spawnTimer = 1;
+    const rnd = jest.spyOn(Math, 'random').mockReturnValue(0.99); // a single plane, not a formation
     step(s);
+    rnd.mockRestore();
     const t = s.enemies.find(e => e.type === EnemyType.TURRET)!;
     expect(t).toBeDefined();
     expect(t.y + t.height).toBeGreaterThan(s.plane.y + 200 - 1); // sits low on the screen

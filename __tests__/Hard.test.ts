@@ -94,7 +94,9 @@ describe('new enemy planes', () => {
     s.plane.invulnerable = 1e9;
     s.config.roster = [{ type: EnemyType.SWARM, weight: 1, max: 8 }];
     s.spawnTimer = 1;
+    const rnd = jest.spyOn(Math, 'random').mockReturnValue(0.99); // a single spawn, not a formation
     step(s);
+    rnd.mockRestore();
     const drones = s.enemies.filter(e => e.type === EnemyType.SWARM);
     expect(drones).toHaveLength(4);
     expect(new Set(drones.map(d => Math.round(d.baseY))).size).toBe(4);

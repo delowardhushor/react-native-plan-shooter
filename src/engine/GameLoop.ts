@@ -7,12 +7,12 @@ import {
 import { medicHeal } from './Armor';
 import { PROJECTILES, type ProjectileKind } from './Projectiles';
 import {
-  AMBUSH_FROM_LEVEL, INTERCEPTORS_FROM_LEVEL, ambushGap, ambushSize,
+  AMBUSH_FROM_LEVEL, INTERCEPTORS_FROM_LEVEL, ambushGap, ambushSize, formationChance,
   BONUS_SCORE_MULTIPLIER, ESCORT_FRAMES, applyMode, getEndlessConfig, getLevelConfig, newEnemiesAt, type LevelConfig } from './Levels';
 import { BEAM_FRAMES, BEAM_TICK, cannonStats, missileStats, type MissileType } from './Weapons';
 import {
   POWERUPS, POWERUP_KINDS, noPowerUps, RAPID_FIRE_FACTOR, PIERCE_DAMAGE, SHIELD_BREAK_INVULNERABLE_FRAMES, WINGMAN_OFFSET,
-  DROP_CHANCE_SMALL, DROP_CHANCE_BIG, DROP_PITY_KILLS, DROP_CHANCE_BONUS, DROP_PITY_BONUS, type ActivePowerUps, type PowerUpKind,
+  DROP_CHANCE_SMALL, DROP_CHANCE_BIG, DROP_PITY_KILLS, DROP_PITY_EARLY, DROP_CHANCE_BONUS, DROP_PITY_BONUS, type ActivePowerUps, type PowerUpKind,
 } from './PowerUps';
 import {
   BOMB_MAX, BOMB_START, BOMB_PER_KILL, BOMB_PER_BIG_KILL, BOMB_BOSS_TRICKLE, BOMB_LOCK_FRAMES,
@@ -659,6 +659,49 @@ const spawnEnemy = (s: GameState) => {
   const margin = type === EnemyType.WAVER ? 50 : 0;
   const y = rand(60 + margin, Math.max(61 + margin, GROUND_Y - height - 6 - margin));
   s.enemies.push(makeEnemy(s, type, SCREEN_WIDTH, y));
+};
+
+// Formations: groups that arrive together and ask for a different answer than single planes
+//  - gate:  a wall of fighters with a gap to fly through (or shoot open)
+//  - vee:   a V of fighters, leader in front
+//  - snake: wavers following one weaving path
+export type FormationKind = 'gate' | 'vee' | 'snake';
+
+export const spawnFormation = (s: GameState, kind?: FormationKind) => {
+  const { config, plane } = s;
+  const bottom = GROUND_Y - 6;
+  const kinds: FormationKind[] = config.level >= 2 ? ['gate', 'vee', 'snake'] : ['gate', 'vee'];
+  const chosen = kind ?? kinds[Math.floor(Math.random() * kinds.length)];
+  const fighter = EnemyType.STANDARD;
+  const fh = ENEMY_DEFS[fighter].size.height;
+
+  if (chosen === 'gate') {
+    // Six lanes across a band around the player's height; two neighbouring lanes are left open
+    const spacing = 48;
+    const lanes = 6;
+    const top = clamp(plane.y + plane.height / 2 - (spacing * lanes) / 2, 60, Math.max(61, bottom - spacing * lanes));
+    const gap = Math.floor(Math.random() * (lanes - 1));
+    for (let i = 0; i < lanes; i++) {
+      if (i === gap || i === gap + 1) continue;
+      s.enemies.push(makeEnemy(s, fighter, SCREEN_WIDTH, clamp(top + i * spacing, 60, bottom - fh)));
+    }
+  } else if (chosen === 'vee') {
+    const y = rand(110, Math.max(111, bottom - 110));
+    s.enemies.push(makeEnemy(s, fighter, SCREEN_WIDTH, y));
+    [1, 2].forEach(k => {
+      s.enemies.push(makeEnemy(s, fighter, SCREEN_WIDTH + k * 36, y - k * 30));
+      s.enemies.push(makeEnemy(s, fighter, SCREEN_WIDTH + k * 36, y + k * 30));
+    });
+  } else {
+    const y = rand(130, Math.max(131, bottom - 130));
+    const delay = Math.round(40 / (config.enemySpeed * 1.15)); // frames a follower trails the one ahead
+    for (let i = 0; i < 4; i++) {
+      const e = makeEnemy(s, EnemyType.WAVER, SCREEN_WIDTH + i * 40, y);
+      e.age = -i * delay;
+      s.enemies.push(e);
+    }
+  }
+  return chosen;
 };
 
 const BOSS_RAGE_FRAMES = 75;
@@ -1555,7 +1598,8 @@ const maybeDropPowerUp = (s: GameState, from: Box, big: boolean) => {
   if (s.pickups.some(p => p.kind !== 'medic')) return;
   const bonus = s.config.mode === 'bonus';
   const chance = bonus ? DROP_CHANCE_BONUS : big ? DROP_CHANCE_BIG : DROP_CHANCE_SMALL;
-  if (s.dropPity < (bonus ? DROP_PITY_BONUS : DROP_PITY_KILLS) && Math.random() >= chance) return;
+  const pity = bonus ? DROP_PITY_BONUS : s.config.level <= 2 ? DROP_PITY_EARLY : DROP_PITY_KILLS;
+  if (s.dropPity < pity && Math.random() >= chance) return;
   s.dropPity = 0;
 
   // Prefer a boost that isn't already running at full strength
@@ -1855,7 +1899,8 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
   s.spawnTimer -= 1;
   if (s.spawnTimer <= 0 && spawnAllowed) {
     if (s.enemies.length < config.maxEnemies) {
-      spawnEnemy(s);
+      if (config.mode !== 'bonus' && !s.bossState && Math.random() < formationChance(config.level)) spawnFormation(s);
+      else spawnEnemy(s);
       // Survival: the longer you last, the faster they come (down to about 65% of the starting gap)
       const ramp = config.mode === 'survival' ? 1 - 0.35 * Math.min(1, s.frameCount / config.surviveFrames) : 1;
       s.spawnTimer = config.spawnInterval * ramp * (s.bossState ? 1.7 : 1) * rand(0.85, 1.2);

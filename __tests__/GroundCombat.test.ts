@@ -39,7 +39,9 @@ describe('ground enemies in the roster', () => {
       const s = calm(11);
       s.config.roster = [{ type, weight: 1, max: 1 }];
       s.spawnTimer = 1;
+      const rnd = jest.spyOn(Math, 'random').mockReturnValue(0.99); // a single plane, not a formation
       step(s);
+      rnd.mockRestore();
       const e = s.enemies.find(x => x.type === type)!;
       expect(e).toBeDefined();
       expect(e.y + e.height).toBeCloseTo(GROUND_Y + 8, 0);

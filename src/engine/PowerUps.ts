@@ -35,6 +35,8 @@ export const WINGMAN_OFFSET = 26;
 export const DROP_CHANCE_SMALL = 0.07;
 export const DROP_CHANCE_BIG = 0.3;
 export const DROP_PITY_KILLS = 14;
+// The first two levels guarantee a crate early, so a new player sees a power-up in their first minute
+export const DROP_PITY_EARLY = 6;
 // Bonus runs shower the player with crates
 export const DROP_CHANCE_BONUS = 0.3;
 export const DROP_PITY_BONUS = 5;
