@@ -150,7 +150,7 @@ describe('teleporter', () => {
 
 describe('roster', () => {
   it('introduces the splitter at 10 and the teleporter at 22, one new enemy per level', () => {
-    expect(newEnemiesAt(10)).toEqual([EnemyType.SPLITTER]);
+    expect(newEnemiesAt(10)).toEqual([EnemyType.SPLITTER, EnemyType.TOWER]);
     expect(newEnemiesAt(22)).toEqual([EnemyType.TELEPORTER]);
     expect(getLevelConfig(9).roster.some(r => r.type === EnemyType.SPLITTER)).toBe(false);
     expect(getLevelConfig(10).roster.some(r => r.type === EnemyType.SPLITTER)).toBe(true);
@@ -160,7 +160,7 @@ describe('roster', () => {
   });
 
   it('banner announces them', () => {
-    expect(createInitialState(10, loadout()).banner?.sub).toBe('NEW ENEMY: SPLITTER');
+    expect(createInitialState(10, loadout()).banner?.sub).toBe('NEW ENEMY: SPLITTER + FLAK TOWER');
     expect(createInitialState(22, loadout()).banner?.sub).toBe('NEW ENEMY: TELEPORTER');
   });
 });

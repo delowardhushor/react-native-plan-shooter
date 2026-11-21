@@ -13,7 +13,10 @@ export enum EnemyType {
   MINELAYER = 8, // slow carrier that seeds the screen with drifting plasma mines
   SPLITTER = 9,  // tough hull that breaks into two swarm drones when destroyed
   TELEPORTER = 10, // blinks into the player's lane (after a warning) and fires a volley
-  TURRET = 11,   // ground emplacement that scrolls past with the terrain and fires up at the player
+  TURRET = 11,   // anti-air gun: ground emplacement that scrolls past with the terrain and fires up at the player
+  TANK = 12,     // ground vehicle that lobs rockets at the player
+  SAM = 13,      // ground launcher that fires slow homing missiles (which can be shot down)
+  TOWER = 14,    // tall flak tower: tough, and a wall to fly over
 }
 
 export const ENEMY_NAMES: Record<EnemyType, string> = {
@@ -28,7 +31,10 @@ export const ENEMY_NAMES: Record<EnemyType, string> = {
   [EnemyType.MINELAYER]: 'MINELAYER',
   [EnemyType.SPLITTER]: 'SPLITTER',
   [EnemyType.TELEPORTER]: 'TELEPORTER',
-  [EnemyType.TURRET]: 'TURRET',
+  [EnemyType.TURRET]: 'AA GUN',
+  [EnemyType.TANK]: 'TANK',
+  [EnemyType.SAM]: 'SAM SITE',
+  [EnemyType.TOWER]: 'FLAK TOWER',
 };
 
 export interface EnemyDef {
@@ -51,7 +57,14 @@ export const ENEMY_DEFS: Record<EnemyType, EnemyDef> = {
   [EnemyType.SPLITTER]: { size: { width: 54, height: 26 }, hp: 5, score: 60, boom: 1.3 },
   [EnemyType.TELEPORTER]: { size: { width: 46, height: 22 }, hp: 4, score: 70, boom: 1.2 },
   [EnemyType.TURRET]: { size: { width: 42, height: 26 }, hp: 4, score: 50, boom: 1.1 },
+  [EnemyType.TANK]: { size: { width: 56, height: 28 }, hp: 4, score: 70, boom: 1.4 },
+  [EnemyType.SAM]: { size: { width: 40, height: 34 }, hp: 4, score: 80, boom: 1.3 },
+  [EnemyType.TOWER]: { size: { width: 34, height: 90 }, hp: 8, score: 100, boom: 1.8 },
 };
+
+// Ground targets are bolted to the terrain: the jet's bombs hit them, and they scroll past with the ground
+export const isGroundType = (type: EnemyType) =>
+  type === EnemyType.TURRET || type === EnemyType.TANK || type === EnemyType.SAM || type === EnemyType.TOWER;
 
 export interface BossDef {
   name: string;

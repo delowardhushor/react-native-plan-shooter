@@ -192,10 +192,10 @@ describe('escort levels', () => {
 });
 
 describe('ground turret', () => {
-  it('appears from level 11 and is bolted to the ground', () => {
-    expect(getLevelConfig(10).roster.some(r => r.type === EnemyType.TURRET)).toBe(false);
-    expect(getLevelConfig(11).roster.some(r => r.type === EnemyType.TURRET)).toBe(true);
-    const s = createInitialState(11, loadout);
+  it('appears from level 4 and is bolted to the ground', () => {
+    expect(getLevelConfig(3).roster.some(r => r.type === EnemyType.TURRET)).toBe(false);
+    expect(getLevelConfig(4).roster.some(r => r.type === EnemyType.TURRET)).toBe(true);
+    const s = createInitialState(4, loadout);
     s.plane.invulnerable = 1e9;
     s.config.roster = [{ type: EnemyType.TURRET, weight: 1, max: 1 }];
     s.spawnTimer = 1;

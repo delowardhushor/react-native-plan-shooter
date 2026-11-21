@@ -16,7 +16,8 @@ import {
   BOMB_MAX, BOMB_START, BOMB_PER_KILL, BOMB_PER_BIG_KILL, BOMB_BOSS_TRICKLE, BOMB_LOCK_FRAMES,
   BOMB_INVULNERABLE_FRAMES, BOMB_BOSS_DAMAGE, BOMB_BULLET_SCORE,
 } from './Bomb';
-import { BOSS_DEFS, ENEMY_DEFS, ENEMY_NAMES, EnemyType, bossKindFor, bossTier, bossTitle } from './Enemies';
+import { BOSS_DEFS, ENEMY_DEFS, ENEMY_NAMES, EnemyType, bossKindFor, bossTier, bossTitle, isGroundType } from './Enemies';
+import { LOB_DAMAGE, LOB_GRAVITY, LOB_RADIUS, LOB_SIZE, LOB_VX, LOB_VY, lobInterval } from './Lob';
 
 export { EnemyType };
 
@@ -171,6 +172,13 @@ const TRANSPORT_DAMAGE_RAM = 2;
 // The ground scrolls at this speed, and ground turrets move with it
 const GROUND_SCROLL = 3;
 
+// A bomb lobbed from the jet: arcs forward and down onto ground targets
+export interface Lob extends Box {
+  vx: number;
+  vy: number;
+  damage: number;
+}
+
 // The laser beam currently burning, if any
 export interface Beam {
   frames: number; // frames left
@@ -199,6 +207,8 @@ export interface GameState {
   bombRequested: boolean;
   bombLock: number;       // frames during which kills don't recharge the bomb
   beam: Beam | null;
+  lobs: Lob[];
+  lastLobFrame: number;
   transport: Transport | null;
   failReason: 'hull' | 'convoy';
   endless: boolean;
@@ -279,6 +289,8 @@ export const createInitialState = (level: number, loadout: Loadout, endless = fa
     bombRequested: false,
     bombLock: 0,
     beam: null,
+    lobs: [],
+    lastLobFrame: 0,
     transport: config.mode === 'escort'
       ? {
         x: -TRANSPORT_SIZE.width - 10, y: GROUND_Y / 2 - TRANSPORT_SIZE.height / 2, ...TRANSPORT_SIZE,
@@ -534,6 +546,7 @@ const winLevel = (s: GameState) => {
   s.enemyBullets = [];
   s.missiles = [];
   s.beam = null;
+  s.lobs = [];
 };
 
 // Endless mode: clearing a wave rolls straight into a harder one, with a small repair and bomb top-up
@@ -543,6 +556,7 @@ const startNextWave = (s: GameState) => {
   s.enemyBullets = [];
   s.missiles = [];
   s.beam = null;
+  s.lobs = [];
   s.wave += 1;
   s.level += 1;
   s.config = getEndlessConfig(s.level);
@@ -607,7 +621,7 @@ const pickEnemyType = (s: GameState): EnemyType => {
 const spawnEnemy = (s: GameState) => {
   const type = pickEnemyType(s);
   const { height } = ENEMY_DEFS[type].size;
-  if (type === EnemyType.TURRET) {
+  if (isGroundType(type)) {
     // Bolted to the ground, sunk in a little so its base reads as part of the terrain
     s.enemies.push(makeEnemy(s, type, SCREEN_WIDTH, GROUND_Y - height + 8));
     return;
@@ -830,6 +844,34 @@ const updateEnemy = (s: GameState, e: Enemy, onSound: SoundFn) => {
       e.x -= GROUND_SCROLL;
       if (plane.alive && e.x < SCREEN_WIDTH - 50 && e.x > plane.x + 140 && s.frameCount - e.lastFiredFrame >= config.roamerFireRate * 1.3) {
         fireAimed(s, e.x + e.width / 2, e.y + 4, config.enemyBulletSpeed * 0.95);
+        e.lastFiredFrame = s.frameCount;
+        onSound('shoot');
+      }
+      break;
+
+    case EnemyType.TANK:
+      // Rolls toward the player a touch faster than the ground scrolls and lobs rockets at them
+      e.x -= GROUND_SCROLL + 0.4;
+      if (plane.alive && e.x < SCREEN_WIDTH - 60 && e.x > plane.x + 160 && s.frameCount - e.lastFiredFrame >= config.roamerFireRate * 1.9) {
+        fireAimed(s, e.x + 10, e.y + 6, config.enemyBulletSpeed * 0.85, [0], 'rocket');
+        e.lastFiredFrame = s.frameCount;
+        onSound('shoot');
+      }
+      break;
+
+    case EnemyType.SAM:
+      e.x -= GROUND_SCROLL;
+      if (plane.alive && e.x < SCREEN_WIDTH - 60 && e.x > plane.x + 120 && s.frameCount - e.lastFiredFrame >= config.roamerFireRate * 2.6) {
+        fireEnemyBullet(s, e.x + e.width / 2, e.y + 4, -config.enemyBulletSpeed * 0.3, -config.enemyBulletSpeed * 0.55, 'seeker');
+        e.lastFiredFrame = s.frameCount;
+        onSound('shoot');
+      }
+      break;
+
+    case EnemyType.TOWER:
+      e.x -= GROUND_SCROLL;
+      if (plane.alive && e.x < SCREEN_WIDTH - 60 && e.x > plane.x + 140 && s.frameCount - e.lastFiredFrame >= config.roamerFireRate * 1.7) {
+        fireAimed(s, e.x + 4, e.y + 10, config.enemyBulletSpeed * 0.9, [-0.22, 0, 0.22]);
         e.lastFiredFrame = s.frameCount;
         onSound('shoot');
       }
@@ -1218,6 +1260,51 @@ const fireMissile = (s: GameState, onSound: SoundFn) => {
   });
   s.lastMissileFrame = s.frameCount;
   onSound('shoot');
+};
+
+// Bombs drop automatically while there is something on the ground to hit
+export const hasGroundTargets = (s: GameState) =>
+  s.enemies.some(e => e.hp > 0 && isGroundType(e.type) && e.x + e.width > s.plane.x && e.x < SCREEN_WIDTH + 40);
+
+const dropLobs = (s: GameState) => {
+  const { plane } = s;
+  if (s.frameCount - s.lastLobFrame < lobInterval(s.loadout.cannon) || !hasGroundTargets(s)) return;
+  s.lastLobFrame = s.frameCount;
+  s.lobs.push({
+    x: plane.x + plane.width * 0.55, y: plane.y + plane.height, width: LOB_SIZE, height: LOB_SIZE,
+    vx: LOB_VX, vy: LOB_VY, damage: LOB_DAMAGE,
+  });
+};
+
+const detonateLob = (s: GameState, lob: Lob, onSound: SoundFn) => {
+  const cx = lob.x + lob.width / 2;
+  const cy = lob.y + lob.height / 2;
+  spawnExplosion(s, cx, cy, 0.8);
+  s.shake = Math.max(s.shake, 3);
+  onSound('destroy');
+  s.enemies.forEach(e => {
+    if (e.hp <= 0 || !isGroundType(e.type)) return;
+    const d = Math.hypot(e.x + e.width / 2 - cx, e.y + e.height / 2 - cy);
+    if (d <= LOB_RADIUS + Math.max(e.width, e.height) / 2) damageTarget(e, lob.damage);
+  });
+};
+
+const updateLobs = (s: GameState, onSound: SoundFn) => {
+  for (let i = s.lobs.length - 1; i >= 0; i--) {
+    const lob = s.lobs[i];
+    lob.vy += LOB_GRAVITY;
+    if (s.frameCount % 2 === 0) emit(s, 'smoke', lob.x - 2, lob.y - 2, -0.2, -0.1, 14, 3.5);
+    lob.x += lob.vx;
+    lob.y += lob.vy;
+    const hitGround = lob.y + lob.height >= GROUND_Y + 6;
+    const hitTarget = s.enemies.some(e => e.hp > 0 && isGroundType(e.type) && isRectCollision(e, lob));
+    if (hitGround || hitTarget) {
+      detonateLob(s, lob, onSound);
+      s.lobs.splice(i, 1);
+    } else if (lob.x > SCREEN_WIDTH + 20) {
+      s.lobs.splice(i, 1);
+    }
+  }
 };
 
 // The laser: a beam from the nose to the edge of the screen that follows the jet. Everything in it takes a
@@ -1609,6 +1696,7 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
     fireCannon(s, onSound);
     fireMissile(s, onSound);
     updateBeam(s, onSound);
+    dropLobs(s);
     if (s.bombRequested) {
       s.bombRequested = false;
       if (s.bomb >= BOMB_MAX) detonateBomb(s, onSound);
@@ -1621,6 +1709,8 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
   // Move projectiles
   s.bullets.forEach(b => { b.x += b.vx; b.y += b.vy; });
   s.bullets = s.bullets.filter(b => b.x < SCREEN_WIDTH && b.y > -10 && b.y < SCREEN_HEIGHT);
+
+  updateLobs(s, onSound);
 
   s.missiles.forEach(m => {
     if (m.type === 'homing') steerHoming(s, m);

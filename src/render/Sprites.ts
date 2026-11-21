@@ -375,6 +375,61 @@ const TRANSPORT_PALETTE: JetPalette = {
 };
 
 export const TURRET_FRAME = { width: 42, height: 26 };
+export const TANK_FRAME = { width: 56, height: 28 };
+export const SAM_FRAME = { width: 40, height: 34 };
+export const TOWER_FRAME = { width: 34, height: 90 };
+
+// Tank: olive hull on tracks with a stubby turret and a barrel raised toward the jet (authored facing right)
+const drawTank = (c: SkCanvas) => {
+  c.drawRRect(Skia.RRectXY(Skia.XYWHRect(2, 17, 52, 10), 5, 5), shaderPaint(linear(0, 17, 0, 27, ['#3a413a', '#1c211c'])));
+  [8, 18, 28, 38, 48].forEach(x => {
+    c.drawCircle(x, 22, 4.2, fillPaint('#2a302a'));
+    c.drawCircle(x, 22, 2.2, fillPaint('#7b857b'));
+  });
+  c.drawPath(poly([[5, 17], [10, 9], [46, 9], [52, 17]]), shaderPaint(linear(0, 9, 0, 17, ['#a8b878', '#6a7c44', '#34421f'], [0, 0.5, 1])));
+  c.drawLine(10, 11, 44, 11, strokePaint('rgba(255,255,255,0.35)', 0.8));
+  c.drawPath(poly([[36, 7], [53, 0.5], [55, 3.5], [38, 10]]), fillPaint('#2b3320'));
+  c.drawRRect(Skia.RRectXY(Skia.XYWHRect(16, 2.5, 26, 9), 4, 4), shaderPaint(linear(0, 2.5, 0, 11.5, ['#b8c888', '#6f8248', '#34421f'], [0, 0.5, 1])));
+  c.drawCircle(29, 7, 2, fillPaint('#ff3b2a'));
+};
+
+// SAM site: a flatbed with a tilted launcher rack and two missile tips
+const drawSam = (c: SkCanvas) => {
+  c.drawRRect(Skia.RRectXY(Skia.XYWHRect(2, 26, 36, 7), 3, 3), shaderPaint(linear(0, 26, 0, 33, ['#6a7480', '#2a3038'])));
+  [8, 20, 32].forEach(x => c.drawCircle(x, 31, 2.6, fillPaint('#1c2026')));
+  c.save();
+  c.translate(12, 26);
+  c.rotate(-48, 0, 0);
+  c.drawRRect(Skia.RRectXY(Skia.XYWHRect(0, -9, 26, 9), 2, 2), shaderPaint(linear(0, -9, 0, 0, ['#8a949e', '#3a424b'])));
+  [-7.5, -3].forEach(y => {
+    c.drawRRect(Skia.RRectXY(Skia.XYWHRect(2, y, 22, 3), 1.5, 1.5), fillPaint('#e8edf2'));
+    c.drawPath(poly([[24, y], [30, y + 1.5], [24, y + 3]]), fillPaint('#ff4a3d'));
+  });
+  c.restore();
+  c.drawCircle(10, 24, 1.6, fillPaint('#ffcf3a'));
+};
+
+// Flak tower: a tapering steel lattice with a gun platform and a red warning beacon
+const drawTower = (c: SkCanvas) => {
+  const steel = strokePaint('#4a535c', 2);
+  c.drawLine(3, 90, 11, 24, steel);
+  c.drawLine(31, 90, 23, 24, steel);
+  const brace = strokePaint('#6a747e', 1.2);
+  for (let y = 86; y > 30; y -= 14) {
+    const t = (90 - y) / 66;
+    const xl = 3 + 8 * t;
+    const xr = 31 - 8 * t;
+    c.drawLine(xl, y, xr, y - 14 * 0.9, brace);
+    c.drawLine(xr, y, xl, y - 14 * 0.9, brace);
+    c.drawLine(xl, y, xr, y, brace);
+  }
+  c.drawRect(Skia.XYWHRect(5, 17, 24, 8), shaderPaint(linear(0, 17, 0, 25, ['#7a8590', '#2c333a'])));
+  c.drawRRect(Skia.RRectXY(Skia.XYWHRect(8, 6, 18, 12), 5, 5), shaderPaint(linear(0, 6, 0, 18, ['#c9d1d8', '#6a7681', '#2b323a'], [0, 0.5, 1])));
+  c.drawRect(Skia.XYWHRect(22, 9, 11, 3), fillPaint('#2b323a'));
+  c.drawLine(17, 6, 17, 1.5, strokePaint('#4a535c', 1));
+  c.drawCircle(17, 2.5, 2.2, fillPaint('#ff3b2a'));
+  c.drawCircle(17, 2.5, 0.9, fillPaint('#ffffff'));
+};
 
 // Ground turret: armoured base, domed housing and a raised barrel (authored facing right, mirrored on screen)
 const drawTurret = (c: SkCanvas) => {
@@ -571,6 +626,9 @@ export const ENEMY_FRAMES: Record<EnemyType, Frame> = {
   [EnemyType.SPLITTER]: JET_FRAME,
   [EnemyType.TELEPORTER]: DELTA_FRAME,
   [EnemyType.TURRET]: TURRET_FRAME,
+  [EnemyType.TANK]: TANK_FRAME,
+  [EnemyType.SAM]: SAM_FRAME,
+  [EnemyType.TOWER]: TOWER_FRAME,
 };
 
 export const ENEMY_GLOWS: Record<EnemyType, Glows> = {
@@ -586,6 +644,9 @@ export const ENEMY_GLOWS: Record<EnemyType, Glows> = {
   [EnemyType.SPLITTER]: [[2, 13.5, 22]],
   [EnemyType.TELEPORTER]: [[2, 10, 20]],
   [EnemyType.TURRET]: [],
+  [EnemyType.TANK]: [],
+  [EnemyType.SAM]: [],
+  [EnemyType.TOWER]: [],
 };
 
 export const BOSS_FRAMES: Frame[] = [GUNSHIP_FRAME, BOMBER_FRAME, DELTA_FRAME, TITAN_FRAME];
@@ -821,6 +882,9 @@ export const getSprites = (): Sprites => {
       [EnemyType.SPLITTER]: record(JET_FRAME.width, JET_FRAME.height, c => drawJet(c, SPLITTER_PALETTE)),
       [EnemyType.TELEPORTER]: record(DELTA_FRAME.width, DELTA_FRAME.height, c => drawDelta(c, TELEPORTER_PALETTE, false)),
       [EnemyType.TURRET]: record(TURRET_FRAME.width, TURRET_FRAME.height, drawTurret),
+      [EnemyType.TANK]: record(TANK_FRAME.width, TANK_FRAME.height, drawTank),
+      [EnemyType.SAM]: record(SAM_FRAME.width, SAM_FRAME.height, drawSam),
+      [EnemyType.TOWER]: record(TOWER_FRAME.width, TOWER_FRAME.height, drawTower),
     },
     bosses: [
       record(GUNSHIP_FRAME.width, GUNSHIP_FRAME.height, c => drawGunship(c, BOSS_PALETTE, true)),

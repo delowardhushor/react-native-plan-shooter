@@ -34,7 +34,7 @@ describe('daily missions', () => {
     for (let d = 1; d <= 28; d++) {
       rollMissions(1, dayKey(day(d))).forEach(m => {
         expect(m.stat).not.toBe('bossKills');
-        if (m.stat.startsWith('kill:')) expect(m.stat).toBe(killKey(EnemyType.STANDARD));
+        if (m.stat.startsWith('kill:')) expect([killKey(EnemyType.STANDARD), killKey(EnemyType.TANK)]).toContain(m.stat);
       });
     }
   });

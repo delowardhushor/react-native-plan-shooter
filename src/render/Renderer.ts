@@ -1,7 +1,8 @@
 import { Skia, BlendMode, StrokeCap, type SkCanvas, type SkImage, type SkPicture } from '@shopify/react-native-skia';
 import { PLANE_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT } from '../engine/Constants';
-import { EnemyType } from '../engine/Enemies';
-import { TELEPORT_WARNING_FRAMES, beamBox, isOnFire, wingmanDrones } from '../engine/GameLoop';
+import { EnemyType, isGroundType } from '../engine/Enemies';
+import { lobLandingX } from '../engine/Lob';
+import { TELEPORT_WARNING_FRAMES, beamBox, hasGroundTargets, isOnFire, wingmanDrones } from '../engine/GameLoop';
 import { BEAM_FRAMES } from '../engine/Weapons';
 import type { Transport, Boss, Enemy, EnemyBullet, GameState, Particle, Pickup } from '../engine/GameLoop';
 import { GROUND_Y, drawBackdrop, drawVignette } from './Backdrop';
@@ -169,7 +170,7 @@ const drawEnemy = (c: SkCanvas, S: Sprites, e: Enemy, frameCount: number) => {
     blit(c, S.powerUpGlows.pierce, dx, dy, 30 + 20 * t, additivePaint, 0.3 + 0.5 * t);
     if (Math.floor(frameCount / 2) % 2 === 0) return;
   }
-  if (e.type !== EnemyType.TURRET) drawShadow(c, e.x, e.y, e.width, e.height);
+  if (!isGroundType(e.type)) drawShadow(c, e.x, e.y, e.width, e.height);
   const dashing = e.type === EnemyType.RUSHER && e.mode === 2;
   const glows = ENEMY_GLOWS[e.type].map(([gx, gy, size]) => [gx, gy, dashing ? size * 1.6 : size] as [number, number, number]);
   const tilt = e.type === EnemyType.STANDARD || e.type === EnemyType.BOMBER ? 0 : e.vy * 2.2;
@@ -199,6 +200,8 @@ const drawEnemy = (c: SkCanvas, S: Sprites, e: Enemy, frameCount: number) => {
   }
 };
 
+const lobPaint = fillPaint('#1d2126');
+const lobShinePaint = fillPaint('rgba(255,255,255,0.7)');
 const hpBackPaint = fillPaint('rgba(0,0,0,0.55)');
 const hpFillPaint = fillPaint('#4cd97b');
 
@@ -299,6 +302,17 @@ export const renderFrame = (state: GameState): SkPicture =>
     const blinkHidden = plane.invulnerable > 0 && Math.floor(plane.invulnerable / 5) % 2 === 0;
     if (playerAlive) drawShadow(c, plane.x, plane.y, plane.width, plane.height);
 
+    if (playerAlive && state.status === 'playing' && hasGroundTargets(state)) {
+      // Where the next bomb would land: fly so this ring sits on a target
+      const lx = lobLandingX(plane.x + plane.width * 0.55, plane.y + plane.height, GROUND_Y);
+      if (lx < SCREEN_WIDTH) {
+        const pulse = 0.5 + 0.5 * Math.sin(f * 0.2);
+        ringPaint.setAlphaf(0.35 + 0.35 * pulse);
+        ringPaint.setStrokeWidth(1.5);
+        c.drawOval({ x: lx - 15, y: GROUND_Y + 1, width: 30, height: 9 }, ringPaint);
+        c.drawLine(lx, GROUND_Y - 6, lx, GROUND_Y + 1, ringPaint);
+      }
+    }
     if (state.transport) drawTransport(c, S, state.transport, f);
     state.pickups.forEach(p => drawPickup(c, S, p, f));
     state.enemies.forEach(e => drawEnemy(c, S, e, f));
@@ -364,6 +378,14 @@ export const renderFrame = (state: GameState): SkPicture =>
       });
       blit(c, S.flash, box.x + 2, cy, 46 * env, additivePaint, 0.95);
     }
+
+    state.lobs.forEach(l => {
+      const cx = l.x + l.width / 2;
+      const cy = l.y + l.height / 2;
+      c.drawCircle(cx, cy, 4.6, lobPaint);
+      c.drawCircle(cx - 1.2, cy - 1.4, 1.3, lobShinePaint);
+      blit(c, S.flash, cx, cy, 14, additivePaint, 0.35);
+    });
 
     state.bullets.forEach(b => {
       normalPaint.setAlphaf(1);

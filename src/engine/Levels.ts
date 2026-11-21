@@ -76,7 +76,10 @@ export const ENEMY_UNLOCK_LEVEL: Partial<Record<EnemyType, number>> = {
   [EnemyType.MINELAYER]: 19,
   [EnemyType.SPLITTER]: 10,
   [EnemyType.TELEPORTER]: 22,
-  [EnemyType.TURRET]: 11,
+  [EnemyType.TANK]: 1,
+  [EnemyType.TURRET]: 4,
+  [EnemyType.SAM]: 7,
+  [EnemyType.TOWER]: 10,
 };
 
 // Enemy planes that make their first appearance on exactly this level
@@ -87,7 +90,11 @@ export const newEnemiesAt = (level: number): EnemyType[] =>
 
 // New enemy planes are introduced one at a time so each can be learned before the next arrives
 const buildRoster = (level: number): SpawnEntry[] => {
-  const roster: SpawnEntry[] = [{ type: EnemyType.STANDARD, weight: 10, max: 99 }];
+  const roster: SpawnEntry[] = [
+    { type: EnemyType.STANDARD, weight: 10, max: 99 },
+    // Ground targets from the very first level: they teach the bombs and give the player somewhere to dive
+    { type: EnemyType.TANK, weight: 3, max: level >= 3 ? 2 : 1 },
+  ];
   if (level >= 2) {
     roster.push({ type: EnemyType.ROAMER, weight: Math.min(2 + level, 6), max: Math.min(1 + Math.floor(level / 3), 2) });
     roster.push({ type: EnemyType.WAVER, weight: Math.min(3 + level, 7), max: 2 });
@@ -99,7 +106,9 @@ const buildRoster = (level: number): SpawnEntry[] => {
   if (level >= 16) roster.push({ type: EnemyType.SWARM, weight: 3, max: 8 });
   if (level >= 19) roster.push({ type: EnemyType.MINELAYER, weight: 2, max: 1 });
   if (level >= 10) roster.push({ type: EnemyType.SPLITTER, weight: 3, max: level >= 16 ? 2 : 1 });
-  if (level >= 11) roster.push({ type: EnemyType.TURRET, weight: 3, max: level >= 20 ? 2 : 1 });
+  if (level >= 4) roster.push({ type: EnemyType.TURRET, weight: 3, max: level >= 12 ? 2 : 1 });
+  if (level >= 7) roster.push({ type: EnemyType.SAM, weight: 2, max: level >= 15 ? 2 : 1 });
+  if (level >= 10) roster.push({ type: EnemyType.TOWER, weight: 2, max: level >= 18 ? 2 : 1 });
   if (level >= 22) roster.push({ type: EnemyType.TELEPORTER, weight: 2, max: level >= 28 ? 2 : 1 });
   return roster;
 };
