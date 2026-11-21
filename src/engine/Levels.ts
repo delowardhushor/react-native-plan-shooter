@@ -62,6 +62,12 @@ export interface LevelConfig {
   bossHp: number;
 }
 
+// Ambushes: now and then a warned-of group attacks from the top (divers) or from behind (interceptors)
+export const AMBUSH_FROM_LEVEL = 2;
+export const INTERCEPTORS_FROM_LEVEL = 4;
+export const ambushGap = (level: number) => Math.max(420, 900 - level * 25); // frames between ambushes
+export const ambushSize = (level: number) => Math.min(5, 2 + Math.floor(level / 6));
+
 export const isBossLevel = (level: number) => level % BOSS_EVERY === 0;
 
 // The level each enemy plane first shows up on
@@ -77,6 +83,8 @@ export const ENEMY_UNLOCK_LEVEL: Partial<Record<EnemyType, number>> = {
   [EnemyType.SPLITTER]: 10,
   [EnemyType.TELEPORTER]: 22,
   [EnemyType.TANK]: 1,
+  [EnemyType.DIVER]: 2,
+  [EnemyType.INTERCEPTOR]: 4,
   [EnemyType.TURRET]: 4,
   [EnemyType.SAM]: 7,
   [EnemyType.TOWER]: 10,

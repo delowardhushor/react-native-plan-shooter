@@ -17,6 +17,8 @@ export enum EnemyType {
   TANK = 12,     // ground vehicle that lobs rockets at the player
   SAM = 13,      // ground launcher that fires slow homing missiles (which can be shot down)
   TOWER = 14,    // tall flak tower: tough, and a wall to fly over
+  DIVER = 15,    // ambush: drops in from the top of the screen on a line to where the player was
+  INTERCEPTOR = 16, // ambush: sweeps in from behind (the left edge), firing as it passes the player
 }
 
 export const ENEMY_NAMES: Record<EnemyType, string> = {
@@ -35,6 +37,8 @@ export const ENEMY_NAMES: Record<EnemyType, string> = {
   [EnemyType.TANK]: 'TANK',
   [EnemyType.SAM]: 'SAM SITE',
   [EnemyType.TOWER]: 'FLAK TOWER',
+  [EnemyType.DIVER]: 'DIVER',
+  [EnemyType.INTERCEPTOR]: 'INTERCEPTOR',
 };
 
 export interface EnemyDef {
@@ -60,6 +64,8 @@ export const ENEMY_DEFS: Record<EnemyType, EnemyDef> = {
   [EnemyType.TANK]: { size: { width: 56, height: 28 }, hp: 4, score: 70, boom: 1.4 },
   [EnemyType.SAM]: { size: { width: 40, height: 34 }, hp: 4, score: 80, boom: 1.3 },
   [EnemyType.TOWER]: { size: { width: 34, height: 90 }, hp: 8, score: 100, boom: 1.8 },
+  [EnemyType.DIVER]: { size: { width: 40, height: 18 }, hp: 2, score: 25, boom: 0.9 },
+  [EnemyType.INTERCEPTOR]: { size: { width: 46, height: 20 }, hp: 3, score: 40, boom: 1.1 },
 };
 
 // Ground targets are bolted to the terrain: the jet's bombs hit them, and they scroll past with the ground

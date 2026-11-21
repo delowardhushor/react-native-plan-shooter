@@ -23,6 +23,9 @@ export const ROAMER_SIZE = { width: 64, height: 34 };
 export const ROAMER_SPEED_X = 0.8; // moves left slowly
 export const ROAMER_SPEED_Y = 1.1; // gentle bobbing
 
+// How far right the jet may fly, as a share of the screen width (enemies can now attack from behind)
+export const PLAYER_MAX_X = 0.5;
+
 export const PLAYER_SPEED = 4; // Top speed for standard D-Pad bounds
 export const BULLET_SPEED = 10;
 

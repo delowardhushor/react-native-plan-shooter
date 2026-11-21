@@ -2,11 +2,11 @@ import { Skia, BlendMode, StrokeCap, type SkCanvas, type SkImage, type SkPicture
 import { PLANE_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT } from '../engine/Constants';
 import { EnemyType, isGroundType } from '../engine/Enemies';
 import { lobLandingX } from '../engine/Lob';
-import { TELEPORT_WARNING_FRAMES, beamBox, hasGroundTargets, isOnFire, wingmanDrones } from '../engine/GameLoop';
+import { AMBUSH_WARNING_FRAMES, TELEPORT_WARNING_FRAMES, beamBox, hasGroundTargets, isOnFire, wingmanDrones } from '../engine/GameLoop';
 import { BEAM_FRAMES } from '../engine/Weapons';
-import type { Transport, Boss, Enemy, EnemyBullet, GameState, Particle, Pickup } from '../engine/GameLoop';
+import type { Ambush, Transport, Boss, Enemy, EnemyBullet, GameState, Particle, Pickup } from '../engine/GameLoop';
 import { GROUND_Y, drawBackdrop, drawVignette } from './Backdrop';
-import { createPictureUnbounded, fillPaint, radial, shaderPaint, strokePaint } from './gfx';
+import { createPictureUnbounded, fillPaint, poly, radial, shaderPaint, strokePaint } from './gfx';
 import {
   BOMBER_FRAME, BOSS_FRAMES, BOSS_GLOWS, ENEMY_FRAMES, ENEMY_GLOWS, HERO_TIERS, JET_FRAME, MEDIC_FRAME, DRONE_FRAME, ROCKET_FRAME, SEEKER_FRAME,
   getHero, getSprites, type Sprites,
@@ -173,10 +173,15 @@ const drawEnemy = (c: SkCanvas, S: Sprites, e: Enemy, frameCount: number) => {
   if (!isGroundType(e.type)) drawShadow(c, e.x, e.y, e.width, e.height);
   const dashing = e.type === EnemyType.RUSHER && e.mode === 2;
   const glows = ENEMY_GLOWS[e.type].map(([gx, gy, size]) => [gx, gy, dashing ? size * 1.6 : size] as [number, number, number]);
-  const tilt = e.type === EnemyType.STANDARD || e.type === EnemyType.BOMBER ? 0 : e.vy * 2.2;
+  // Ambush enemies point along their heading: divers dive down-left, interceptors fly right
+  const heading = e.type === EnemyType.DIVER || e.type === EnemyType.INTERCEPTOR;
+  const flip = e.type !== EnemyType.INTERCEPTOR;
+  const tilt = heading
+    ? (Math.atan2(e.vy, flip ? -(e.vx ?? 0) : (e.vx ?? 1)) * 180) / Math.PI
+    : e.type === EnemyType.STANDARD || e.type === EnemyType.BOMBER ? 0 : e.vy * 2.2;
   drawAircraft(c, {
     pic: S.enemies[e.type], frame: ENEMY_FRAMES[e.type], x: e.x, y: e.y, w: e.width, h: e.height,
-    flip: true, tilt, hit: e.hitFlash > 0, glows, frameCount, S,
+    flip, tilt, hit: e.hitFlash > 0, glows, frameCount, S,
   });
 
   const noseY = e.y + e.height / 2;
@@ -198,6 +203,26 @@ const drawEnemy = (c: SkCanvas, S: Sprites, e: Enemy, frameCount: number) => {
   if (e.type === EnemyType.SNIPER && e.charge > 0) {
     blit(c, S.flash, e.x + 2, noseY, 10 + 26 * e.charge, additivePaint, 0.4 + 0.6 * e.charge);
   }
+};
+
+const warnPaint = fillPaint('#ff3b2a');
+
+// Arrows flash along the screen edge a moment before an ambush enters from there
+const drawAmbushWarning = (c: SkCanvas, S: Sprites, a: Ambush, frameCount: number) => {
+  const blink = Math.floor(frameCount / 4) % 2 === 0;
+  const grow = 1 - a.timer / AMBUSH_WARNING_FRAMES;
+  warnPaint.setAlphaf(blink ? 0.95 : 0.45);
+  a.spots.forEach(spot => {
+    if (a.side === 'top') {
+      const y = 22 + grow * 6;
+      c.drawPath(poly([[spot - 11, y - 10], [spot + 11, y - 10], [spot, y + 12]]), warnPaint);
+      blit(c, S.fireGlow, spot, y, 40 + 16 * grow, additivePaint, blink ? 0.7 : 0.3);
+    } else {
+      const x = 22 + grow * 6;
+      c.drawPath(poly([[x - 10, spot - 11], [x - 10, spot + 11], [x + 12, spot]]), warnPaint);
+      blit(c, S.fireGlow, x, spot, 40 + 16 * grow, additivePaint, blink ? 0.7 : 0.3);
+    }
+  });
 };
 
 const lobPaint = fillPaint('#1d2126');
@@ -408,6 +433,7 @@ export const renderFrame = (state: GameState): SkPicture =>
     }
 
     state.particles.forEach(p => { if (p.kind !== 'smoke') drawParticle(c, S, p); });
+    if (state.ambush) drawAmbushWarning(c, S, state.ambush, f);
 
     c.restore();
     drawVignette(c, state.level);

@@ -1,12 +1,14 @@
 import {
   SCREEN_WIDTH, SCREEN_HEIGHT, PLANE_SIZE, BULLET_SIZE, BULLET_SPEED, GROUND_HEIGHT,
   ROAMER_SPEED_X, ROAMER_SPEED_Y, PARTICLE_LIFETIME, PARTICLE_SPEED,
-  PLAYER_SPEED, PLANE_MAX_TILT, MAX_PARTICLES, PICKUP_SIZE, ENEMY_CONTACT_DAMAGE, BOSS_CONTACT_DAMAGE,
+  PLAYER_SPEED, PLAYER_MAX_X, PLANE_MAX_TILT, MAX_PARTICLES, PICKUP_SIZE, ENEMY_CONTACT_DAMAGE, BOSS_CONTACT_DAMAGE,
   HIT_INVULNERABLE_FRAMES, CONTINUE_INVULNERABLE_FRAMES,
 } from './Constants';
 import { medicHeal } from './Armor';
 import { PROJECTILES, type ProjectileKind } from './Projectiles';
-import { BONUS_SCORE_MULTIPLIER, ESCORT_FRAMES, applyMode, getEndlessConfig, getLevelConfig, newEnemiesAt, type LevelConfig } from './Levels';
+import {
+  AMBUSH_FROM_LEVEL, INTERCEPTORS_FROM_LEVEL, ambushGap, ambushSize,
+  BONUS_SCORE_MULTIPLIER, ESCORT_FRAMES, applyMode, getEndlessConfig, getLevelConfig, newEnemiesAt, type LevelConfig } from './Levels';
 import { BEAM_FRAMES, BEAM_TICK, cannonStats, missileStats, type MissileType } from './Weapons';
 import {
   POWERUPS, POWERUP_KINDS, noPowerUps, RAPID_FIRE_FACTOR, PIERCE_DAMAGE, SHIELD_BREAK_INVULNERABLE_FRAMES, WINGMAN_OFFSET,
@@ -53,6 +55,7 @@ export interface Enemy extends Box {
   mode: number;     // per-type behaviour state (rusher: 0 track, 1 lock on, 2 dash)
   timer: number;
   charge: number;   // 0..1 wind-up before a shot, drawn as a warning glow
+  vx?: number;      // ambush enemies fly a set heading
 }
 
 export interface Boss extends Box {
@@ -172,6 +175,16 @@ const TRANSPORT_DAMAGE_RAM = 2;
 // The ground scrolls at this speed, and ground turrets move with it
 const GROUND_SCROLL = 3;
 
+// A warned-of attack about to arrive: arrows flash at the screen edge for a second, then the group enters
+export interface Ambush {
+  side: 'top' | 'left';
+  timer: number;    // frames until the group enters
+  spots: number[];  // x positions along the top edge, or y positions along the left edge
+}
+
+export const AMBUSH_WARNING_FRAMES = 60;
+const FIRST_AMBUSH_FRAMES = 600;
+
 // A bomb lobbed from the jet: arcs forward and down onto ground targets
 export interface Lob extends Box {
   vx: number;
@@ -209,6 +222,8 @@ export interface GameState {
   beam: Beam | null;
   lobs: Lob[];
   lastLobFrame: number;
+  ambush: Ambush | null;
+  ambushTimer: number;
   transport: Transport | null;
   failReason: 'hull' | 'convoy';
   endless: boolean;
@@ -291,6 +306,8 @@ export const createInitialState = (level: number, loadout: Loadout, endless = fa
     beam: null,
     lobs: [],
     lastLobFrame: 0,
+    ambush: null,
+    ambushTimer: FIRST_AMBUSH_FRAMES,
     transport: config.mode === 'escort'
       ? {
         x: -TRANSPORT_SIZE.width - 10, y: GROUND_Y / 2 - TRANSPORT_SIZE.height / 2, ...TRANSPORT_SIZE,
@@ -849,6 +866,25 @@ const updateEnemy = (s: GameState, e: Enemy, onSound: SoundFn) => {
       }
       break;
 
+    case EnemyType.DIVER:
+      // Locked onto a straight line when it entered
+      e.x += e.vx ?? 0;
+      e.y += e.vy;
+      break;
+
+    case EnemyType.INTERCEPTOR:
+      // Sweeps left to right past the player, drifting onto their lane and firing twice as it goes
+      e.x += e.vx ?? 4;
+      if (plane.alive) e.vy = clamp((plane.y + plane.height / 2 - cy) * 0.025, -1, 1);
+      e.y = clamp(e.y + e.vy, 40, maxY);
+      if (plane.alive && e.mode < 2 && e.x > 10 && s.frameCount - e.lastFiredFrame >= 26) {
+        fireAimed(s, e.x + e.width, e.y + e.height / 2, config.enemyBulletSpeed * 1.1);
+        e.mode += 1;
+        e.lastFiredFrame = s.frameCount;
+        onSound('shoot');
+      }
+      break;
+
     case EnemyType.TANK:
       // Rolls toward the player a touch faster than the ground scrolls and lobs rockets at them
       e.x -= GROUND_SCROLL + 0.4;
@@ -948,6 +984,67 @@ const updateEnemy = (s: GameState, e: Enemy, onSound: SoundFn) => {
 export const TELEPORT_WARNING_FRAMES = 40;
 
 const SEEKER_LIFETIME = 280;
+
+// Ambush director: every so often a group is announced with edge arrows, then attacks from the top or behind
+const beginAmbush = (s: GameState) => {
+  const { config, plane } = s;
+  const n = ambushSize(config.level);
+  const left = config.level >= INTERCEPTORS_FROM_LEVEL && Math.random() < 0.5;
+  let spots: number[];
+  if (left) {
+    const cy = plane.y + plane.height / 2;
+    spots = Array.from({ length: n }, (_, i) => clamp(cy + (i - (n - 1) / 2) * 46, 60, GROUND_Y - 50));
+  } else {
+    const lo = SCREEN_WIDTH * 0.4;
+    const span = SCREEN_WIDTH * 0.52;
+    spots = Array.from({ length: n }, (_, i) => lo + ((i + 0.5) / n) * span + rand(-14, 14));
+  }
+  s.ambush = { side: left ? 'left' : 'top', timer: AMBUSH_WARNING_FRAMES, spots };
+};
+
+const launchAmbush = (s: GameState) => {
+  const ambush = s.ambush;
+  if (!ambush) return;
+  const { plane, config } = s;
+  const px = plane.x + plane.width / 2;
+  const py = plane.y + plane.height / 2;
+  ambush.spots.forEach((spot, i) => {
+    if (ambush.side === 'top') {
+      const diver = makeEnemy(s, EnemyType.DIVER, spot, -ENEMY_DEFS[EnemyType.DIVER].size.height);
+      const speed = 3.4 + config.enemySpeed * 0.3;
+      const a = Math.atan2(py - diver.y, px - spot);
+      diver.vx = Math.cos(a) * speed;
+      diver.vy = Math.sin(a) * speed;
+      s.enemies.push(diver);
+    } else {
+      const w = ENEMY_DEFS[EnemyType.INTERCEPTOR].size.width;
+      const interceptor = makeEnemy(s, EnemyType.INTERCEPTOR, -w - i * 54, spot);
+      interceptor.vx = 4 + config.enemySpeed * 0.3;
+      interceptor.lastFiredFrame = s.frameCount;
+      s.enemies.push(interceptor);
+    }
+  });
+};
+
+const updateAmbush = (s: GameState) => {
+  const { config } = s;
+  // Bonus runs are a breather and escort levels are already hard on the convoy, so no ambushes there
+  if (config.level < AMBUSH_FROM_LEVEL || config.mode === 'bonus' || config.mode === 'escort' || s.bossState > 0 || s.status !== 'playing') {
+    s.ambush = null;
+    return;
+  }
+  if (s.ambush) {
+    s.ambush.timer -= 1;
+    if (s.ambush.timer <= 0) {
+      launchAmbush(s);
+      s.ambush = null;
+      s.ambushTimer = ambushGap(config.level) * rand(0.85, 1.2);
+    }
+    return;
+  }
+  s.ambushTimer -= 1;
+  if (s.ambushTimer <= 0) beginAmbush(s);
+};
 
 const updateEnemyBullets = (s: GameState) => {
   const { plane } = s;
@@ -1679,7 +1776,7 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
 
     if (plane.y < 0) plane.y = 0;
     if (plane.x < 0) plane.x = 0;
-    if (plane.x > SCREEN_WIDTH / 3) plane.x = SCREEN_WIDTH / 3;
+    if (plane.x > SCREEN_WIDTH * PLAYER_MAX_X) plane.x = SCREEN_WIDTH * PLAYER_MAX_X;
     if (plane.y > GROUND_Y - plane.height) plane.y = GROUND_Y - plane.height;
 
     // Bank the plane toward its vertical movement
@@ -1767,8 +1864,11 @@ export const updateGameState = (s: GameState, onSound: SoundFn) => {
 
   // Move enemies
   s.enemies.forEach(e => updateEnemy(s, e, onSound));
-  s.enemies = s.enemies.filter(e => e.x + e.width > 0);
+  // Left behind on any side: ambush enemies cross the screen, so keep the ones still heading in or across
+  s.enemies = s.enemies.filter(e =>
+    (e.x + e.width > 0 || (e.vx ?? 0) > 0) && e.x < SCREEN_WIDTH + 120 && e.y < SCREEN_HEIGHT + 30);
 
+  updateAmbush(s);
   updateBoss(s, onSound);
   updateTransport(s, onSound);
   updatePickups(s, onSound);

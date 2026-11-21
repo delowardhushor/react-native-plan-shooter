@@ -374,6 +374,19 @@ const TRANSPORT_PALETTE: JetPalette = {
   canopy: ['#dff9ff', '#2a8fd0'], accent: '#3aff9a',
 };
 
+// Diver: hot red-orange delta; interceptor: gold delta with a black spine
+const DIVER_PALETTE: JetPalette = {
+  bodyTop: '#ffb3a0', bodyMid: '#d83a22', bodyLow: '#4a0f08',
+  wingNear: ['#ff7a5a', '#6a1a0e'], wingFar: '#3a0c06', fin: '#e8553a',
+  canopy: ['#fff1c8', '#e0801a'], accent: '#ffe23a',
+};
+
+const INTERCEPTOR_PALETTE: JetPalette = {
+  bodyTop: '#fff0b0', bodyMid: '#d8a82a', bodyLow: '#3a2a08',
+  wingNear: ['#f0c850', '#6a4a0c'], wingFar: '#3a2808', fin: '#e8c040',
+  canopy: ['#e0f8ff', '#2a8ad0'], accent: '#ff3b2a',
+};
+
 export const TURRET_FRAME = { width: 42, height: 26 };
 export const TANK_FRAME = { width: 56, height: 28 };
 export const SAM_FRAME = { width: 40, height: 34 };
@@ -629,6 +642,8 @@ export const ENEMY_FRAMES: Record<EnemyType, Frame> = {
   [EnemyType.TANK]: TANK_FRAME,
   [EnemyType.SAM]: SAM_FRAME,
   [EnemyType.TOWER]: TOWER_FRAME,
+  [EnemyType.DIVER]: DELTA_FRAME,
+  [EnemyType.INTERCEPTOR]: DELTA_FRAME,
 };
 
 export const ENEMY_GLOWS: Record<EnemyType, Glows> = {
@@ -647,6 +662,8 @@ export const ENEMY_GLOWS: Record<EnemyType, Glows> = {
   [EnemyType.TANK]: [],
   [EnemyType.SAM]: [],
   [EnemyType.TOWER]: [],
+  [EnemyType.DIVER]: [[2, 10, 20]],
+  [EnemyType.INTERCEPTOR]: [[2, 10, 22]],
 };
 
 export const BOSS_FRAMES: Frame[] = [GUNSHIP_FRAME, BOMBER_FRAME, DELTA_FRAME, TITAN_FRAME];
@@ -885,6 +902,8 @@ export const getSprites = (): Sprites => {
       [EnemyType.TANK]: record(TANK_FRAME.width, TANK_FRAME.height, drawTank),
       [EnemyType.SAM]: record(SAM_FRAME.width, SAM_FRAME.height, drawSam),
       [EnemyType.TOWER]: record(TOWER_FRAME.width, TOWER_FRAME.height, drawTower),
+      [EnemyType.DIVER]: record(DELTA_FRAME.width, DELTA_FRAME.height, c => drawDelta(c, DIVER_PALETTE, false)),
+      [EnemyType.INTERCEPTOR]: record(DELTA_FRAME.width, DELTA_FRAME.height, c => drawDelta(c, INTERCEPTOR_PALETTE, false)),
     },
     bosses: [
       record(GUNSHIP_FRAME.width, GUNSHIP_FRAME.height, c => drawGunship(c, BOSS_PALETTE, true)),
