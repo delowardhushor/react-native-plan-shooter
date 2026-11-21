@@ -1,104 +1,117 @@
 <en-US>
 What's new:
-• Campaign map with chapters, 1-3 star ratings and level replays
-• Hangar with 5 jet skins to unlock
-• 3 new enemy planes and tougher Mk II bosses
-• 5 worlds, music, combos and daily rewards
-• Redesigned menus and a brand-new hero jet
+• Ground combat: bombs drop automatically on tanks, AA guns, SAM sites and flak towers
+• Ambushes from above and behind, with warning arrows
+• Power-ups, a screen-clearing bomb, combo bonuses and a new Laser weapon
+• Endless mode, daily missions, achievements, and new survival, bonus and escort levels
+• Rage-phase bosses and new enemies: splitters, teleporters, divers and interceptors
+• A leaner hull: every hit counts
 </en-US>
 <es-ES>
 Novedades:
-• Mapa de campaña con capítulos, 1-3 estrellas y repetición de niveles
-• Hangar con 5 skins de caza por desbloquear
-• 3 nuevos aviones enemigos y jefes Mk II más duros
-• 5 mundos, música, combos y recompensas diarias
-• Menús rediseñados y un nuevo caza protagonista
+• Combate terrestre: las bombas caen solas sobre tanques, cañones antiaéreos, misiles SAM y torres
+• Emboscadas desde arriba y por detrás, con flechas de aviso
+• Potenciadores, una bomba que limpia la pantalla, bonos de combo y la nueva arma Láser
+• Modo sin fin, misiones diarias, logros y nuevos niveles de supervivencia, bonus y escolta
+• Jefes con fase de furia y nuevos enemigos: divisores, teletransportadores, picados e interceptores
+• Casco más ajustado: cada impacto cuenta
 </es-ES>
 <pt-BR>
 Novidades:
-• Mapa da campanha com capítulos, 1-3 estrelas e repetição de fases
-• Hangar com 5 skins de caça para desbloquear
-• 3 novos aviões inimigos e chefes Mk II mais difíceis
-• 5 mundos, música, combos e recompensas diárias
-• Menus redesenhados e um novo caça protagonista
+• Combate terrestre: bombas caem sozinhas sobre tanques, canhões antiaéreos, mísseis SAM e torres
+• Emboscadas por cima e por trás, com setas de aviso
+• Power-ups, uma bomba que limpa a tela, bônus de combo e a nova arma Laser
+• Modo infinito, missões diárias, conquistas e novas fases de sobrevivência, bônus e escolta
+• Chefes com fase de fúria e novos inimigos: divisores, teletransportadores, mergulhadores e interceptadores
+• Casco mais enxuto: cada tiro conta
 </pt-BR>
 <fr-FR>
 Nouveautés :
-• Carte de campagne avec chapitres, 1 à 3 étoiles et niveaux rejouables
-• Hangar avec 5 skins d'avion à débloquer
-• 3 nouveaux avions ennemis et des boss Mk II plus coriaces
-• 5 mondes, musique, combos et récompenses quotidiennes
-• Menus repensés et un tout nouveau chasseur
+• Combat au sol : les bombes tombent seules sur les chars, canons antiaériens, sites SAM et tours de DCA
+• Embuscades par le haut et par l'arrière, avec flèches d'alerte
+• Bonus, bombe qui nettoie l'écran, bonus de combo et nouvelle arme Laser
+• Mode sans fin, missions quotidiennes, succès et nouveaux niveaux survie, bonus et escorte
+• Boss en phase de rage et nouveaux ennemis : diviseurs, téléporteurs, piqueurs et intercepteurs
+• Coque plus légère : chaque impact compte
 </fr-FR>
 <de-DE>
 Neu:
-• Kampagnenkarte mit Kapiteln, 1-3 Sternen und wiederholbaren Leveln
-• Hangar mit 5 freischaltbaren Jet-Skins
-• 3 neue Gegnerflugzeuge und härtere Mk-II-Bosse
-• 5 Welten, Musik, Combos und tägliche Belohnungen
-• Neu gestaltete Menüs und ein brandneuer Helden-Jet
+• Bodenkampf: Bomben fallen automatisch auf Panzer, Flak, SAM-Stellungen und Flaktürme
+• Hinterhalte von oben und von hinten, mit Warnpfeilen
+• Power-ups, eine bildschirmräumende Bombe, Kombo-Boni und die neue Laser-Waffe
+• Endlosmodus, tägliche Missionen, Erfolge sowie neue Überlebens-, Bonus- und Geleitschutz-Level
+• Bosse mit Wutphase und neue Gegner: Splitter, Teleporter, Sturzflieger und Abfangjäger
+• Schlankerer Rumpf: Jeder Treffer zählt
 </de-DE>
 <ru-RU>
 Что нового:
-• Карта кампании с главами, оценкой 1-3 звезды и повтором уровней
-• Ангар с 5 скинами самолёта
-• 3 новых вражеских самолёта и более сильные боссы Mk II
-• 5 миров, музыка, комбо и ежедневные награды
-• Обновлённые меню и новый главный истребитель
+• Бои с землёй: бомбы сами падают на танки, зенитки, ЗРК и башни ПВО
+• Засады сверху и сзади со стрелками-предупреждениями
+• Бонусы, бомба, очищающая экран, награды за комбо и новое оружие — лазер
+• Бесконечный режим, ежедневные задания, достижения и новые уровни: выживание, бонус и конвой
+• Боссы с фазой ярости и новые враги: делящиеся, телепортеры, пикировщики и перехватчики
+• Корпус стал легче: каждое попадание важно
 </ru-RU>
 <id>
 Yang baru:
-• Peta kampanye dengan bab, peringkat 1-3 bintang, dan ulang level
-• Hangar dengan 5 skin jet untuk dibuka
-• 3 pesawat musuh baru dan bos Mk II yang lebih tangguh
-• 5 dunia, musik, combo, dan hadiah harian
-• Menu didesain ulang dan jet pahlawan baru
+• Pertempuran darat: bom jatuh otomatis ke tank, meriam antipesawat, situs SAM, dan menara
+• Penyergapan dari atas dan belakang, dengan panah peringatan
+• Power-up, bom pembersih layar, bonus kombo, dan senjata Laser baru
+• Mode tanpa akhir, misi harian, pencapaian, serta level bertahan, bonus, dan pengawalan baru
+• Bos dengan fase amarah dan musuh baru: pemecah, teleporter, penyelam, dan pencegat
+• Lambung lebih ramping: setiap tembakan berarti
 </id>
 <hi-IN>
 नया क्या है:
-• चैप्टर, 1-3 स्टार रेटिंग और लेवल रीप्ले के साथ कैंपेन मैप
-• 5 जेट स्किन अनलॉक करने के लिए हैंगर
-• 3 नए दुश्मन विमान और ज़्यादा ताकतवर Mk II बॉस
-• 5 दुनिया, संगीत, कॉम्बो और रोज़ के इनाम
-• नए डिज़ाइन के मेन्यू और बिल्कुल नया हीरो जेट
+• ज़मीनी लड़ाई: बम अपने-आप टैंक, एंटी-एयर गन, SAM साइट और टावरों पर गिरते हैं
+• ऊपर और पीछे से घात हमले, चेतावनी तीरों के साथ
+• पावर-अप, स्क्रीन साफ़ करने वाला बम, कॉम्बो बोनस और नया लेज़र हथियार
+• एंडलेस मोड, रोज़ के मिशन, उपलब्धियाँ और नए सर्वाइवल, बोनस व एस्कॉर्ट लेवल
+• गुस्से वाले चरण वाले बॉस और नए दुश्मन: स्प्लिटर, टेलीपोर्टर, डाइवर और इंटरसेप्टर
+• पतला हल: हर हिट मायने रखती है
 </hi-IN>
 <bn-BD>
 নতুন কী:
-• চ্যাপ্টার, ১-৩ স্টার রেটিং ও লেভেল রিপ্লেসহ ক্যাম্পেইন ম্যাপ
-• আনলক করার মতো ৫টি জেট স্কিনসহ হ্যাঙ্গার
-• ৩টি নতুন শত্রু বিমান ও আরও কঠিন Mk II বস
-• ৫টি জগৎ, মিউজিক, কম্বো ও প্রতিদিনের পুরস্কার
-• নতুন ডিজাইনের মেনু ও একদম নতুন হিরো জেট
+• স্থল যুদ্ধ: ট্যাঙ্ক, অ্যান্টি-এয়ার গান, SAM সাইট ও টাওয়ারে বোমা নিজে থেকেই পড়ে
+• ওপর ও পেছন থেকে আকস্মিক হামলা, সতর্কতার তীরসহ
+• পাওয়ার-আপ, পর্দা পরিষ্কারকারী বোমা, কম্বো বোনাস ও নতুন লেজার অস্ত্র
+• এন্ডলেস মোড, প্রতিদিনের মিশন, অর্জন এবং নতুন সার্ভাইভাল, বোনাস ও এসকর্ট লেভেল
+• রাগী পর্যায়ের বস এবং নতুন শত্রু: স্প্লিটার, টেলিপোর্টার, ডাইভার ও ইন্টারসেপ্টর
+• চিকন হাল: প্রতিটি আঘাত গুরুত্বপূর্ণ
 </bn-BD>
 <ar>
 الجديد:
-• خريطة حملة بفصول وتقييم من 1 إلى 3 نجوم وإعادة المراحل
-• هنغار بخمسة أشكال للطائرة يمكن فتحها
-• 3 طائرات عدو جديدة وزعماء Mk II أشد قوة
-• 5 عوالم وموسيقى وكومبو ومكافآت يومية
-• قوائم بتصميم جديد وطائرة بطل جديدة كليًا
+• قتال أرضي: تسقط القنابل تلقائيًا على الدبابات والمدافع المضادة للطائرات ومواقع الصواريخ والأبراج
+• كمائن من الأعلى ومن الخلف مع أسهم تحذير
+• تعزيزات وقنبلة تمسح الشاشة ومكافآت كومبو وسلاح ليزر جديد
+• وضع بلا نهاية ومهام يومية وإنجازات ومراحل جديدة للصمود والمكافآت والمرافقة
+• زعماء بمرحلة غضب وأعداء جدد: المنقسم والمنتقل والغطاس والمعترض
+• هيكل أخف: كل إصابة لها وزنها
 </ar>
 <ja-JP>
 新機能：
-• チャプター、星1〜3の評価、ステージ再挑戦に対応したキャンペーンマップ
-• 解放できる5種類の機体スキンがあるハンガー
-• 新しい敵機3種と、より強いMk IIボス
-• 5つのワールド、音楽、コンボ、デイリー報酬
-• 一新したメニューと新しい主役機
+• 地上戦：戦車・対空砲・SAM・防空塔に爆弾が自動で落下
+• 上と後ろからの奇襲（警告矢印付き）
+• パワーアップ、画面一掃ボム、コンボボーナス、新武器レーザー
+• エンドレスモード、デイリーミッション、実績、新ステージ（サバイバル・ボーナス・護衛）
+• 怒りフェーズのボスと新しい敵：分裂機、テレポーター、急降下機、迎撃機
+• 機体が軽量化：1発の被弾が重くなりました
 </ja-JP>
 <ko-KR>
 새로운 기능:
-• 챕터, 별 1~3개 평가, 레벨 재도전이 가능한 캠페인 지도
-• 해금할 수 있는 전투기 스킨 5종이 있는 격납고
-• 새로운 적기 3종과 더 강력한 Mk II 보스
-• 5개 월드, 음악, 콤보, 일일 보상
-• 새로 디자인한 메뉴와 새로운 주인공 전투기
+• 지상전: 전차, 대공포, SAM 기지, 방공탑에 폭탄이 자동으로 투하
+• 위와 뒤에서 오는 기습, 경고 화살표 표시
+• 파워업, 화면을 지우는 폭탄, 콤보 보너스, 새로운 레이저 무기
+• 무한 모드, 일일 미션, 업적, 새로운 생존·보너스·호위 레벨
+• 분노 단계 보스와 새로운 적: 분열기, 순간이동기, 급강하기, 요격기
+• 더 가벼워진 기체: 모든 피격이 중요해집니다
 </ko-KR>
 <tr-TR>
 Yenilikler:
-• Bölümler, 1-3 yıldız puanı ve seviye tekrarı olan kampanya haritası
-• Açılacak 5 jet görünümüyle hangar
-• 3 yeni düşman uçağı ve daha sert Mk II patronları
-• 5 dünya, müzik, kombolar ve günlük ödüller
-• Yeniden tasarlanan menüler ve yepyeni kahraman jet
+• Kara savaşı: Bombalar tanklara, uçaksavarlara, SAM sahalarına ve kulelere otomatik düşer
+• Yukarıdan ve arkadan pusular, uyarı oklarıyla
+• Güçlendirmeler, ekranı temizleyen bomba, kombo bonusları ve yeni Lazer silahı
+• Sonsuz mod, günlük görevler, başarımlar ve yeni hayatta kalma, bonus ve eskort seviyeleri
+• Öfke aşamalı patronlar ve yeni düşmanlar: bölünenler, ışınlananlar, dalış yapanlar ve önleyiciler
+• Daha dayanıksız gövde: her isabet önemli
 </tr-TR>

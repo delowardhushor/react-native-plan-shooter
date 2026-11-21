@@ -7,31 +7,42 @@ TITLE:
 Plane Shooter: Sky Fighter
 
 SHORT DESCRIPTION:
-Epic air combat: 5 worlds, giant bosses, jet skins. Free and plays offline.
+Arcade air combat: bomb ground targets, dodge ambushes, beat giant bosses.
 
 FULL DESCRIPTION:
-Take to the skies in Plane Shooter, a fast arcade shooter played in landscape. Dodge enemy fire, chain kills into big combos and take down giant bosses.
+Take to the skies in Plane Shooter, a fast arcade shooter played in landscape. Shoot down jets, bomb tanks and towers on the ground, dodge ambushes from above and behind, and take down giant bosses.
+
+AIR AND GROUND
+• Cannon forward, bombs below: your jet drops bombs automatically on ground targets, and a landing marker shows where they fall
+• Fly low to hit tanks, AA guns, SAM sites and flak towers, or stay high where it is safer
+• Ambushes arrive from above and behind, with a warning arrow before they strike
+• Formations to read: gates with a gap, V-wings and weaving snakes
 
 CAMPAIGN
 • Fly through chapters across 5 worlds: clear skies, sunset, midnight, storm and arctic
 • Earn 1-3 stars on every level and replay cleared levels to improve your rating
-• A giant boss ends each chapter, and they return stronger as Mk II, Mk III and beyond
+• Survival levels, bonus runs and convoy escorts break up the action
+• A giant boss ends each chapter, enrages at half health and returns stronger as Mk II, Mk III and beyond
 
-ENEMIES
-• 9 enemy types: snipers, rushers, bombers, shielded fighters, drone swarms, mine layers and more
-• New threats keep arriving and the difficulty never stops climbing
+MORE TO PLAY
+• Endless mode: wave after wave, beat your best
+• Daily missions and 18 achievements
+• Daily rewards with a login streak
+
+ENEMIES AND WEAPONS
+• 17 enemy types: snipers, rushers, bombers, shielded fighters, drone swarms, mine layers, splitters, teleporters and more
+• Power-ups: rapid fire, shield, piercing overdrive and wingmen
+• A screen-clearing bomb, combo streaks that set your guns on fire, and free missile salvos
+• Unlock homing missiles, explosive blasts, a piercing lance and a sweeping laser
 
 UPGRADES AND JETS
 • Upgrade your armor and cannon, up to a triple spread shot
-• Unlock homing missiles, explosive blasts and a piercing lance
 • Collect jet skins; your fighter evolves as you upgrade
 
 EXTRAS
-• Combo multipliers and a slow-motion boss finish
-• Daily rewards with a login streak
 • Simple touch controls and an arcade soundtrack
 • Play offline, no internet connection needed to fly
-• Free to play, with optional rewarded ads for bonus points and skins
+• Free to play, with optional rewarded ads for bonus points, skins and a second chance
 
 Ready for takeoff, pilot?
 
